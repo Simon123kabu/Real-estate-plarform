@@ -42,8 +42,9 @@ const propertySchema = new mongoose.Schema(
       type: Number,
       default: 0,
     },
+    // Area is stored in square feet. Use consistent units throughout the app.
     area: {
-      type: Number, // in square meters/feet — pick a convention and stay consistent
+      type: Number,
     },
     address: {
       type: String,
@@ -59,9 +60,10 @@ const propertySchema = new mongoose.Schema(
       required: true,
       index: true,
     },
+    // Cloudinary URLs stored after upload
     images: [
       {
-        type: String, // file paths or URLs
+        type: String,
       },
     ],
     agent: {
@@ -75,5 +77,6 @@ const propertySchema = new mongoose.Schema(
 
 // Compound index to speed up common filter combinations
 propertySchema.index({ city: 1, propertyType: 1, price: 1 });
+propertySchema.index({ listingType: 1, status: 1 });
 
 module.exports = mongoose.model('Property', propertySchema);

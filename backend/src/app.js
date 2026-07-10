@@ -40,7 +40,7 @@ app.get('/api/health', (req, res) => {
 // ---- Routes ----
 app.use('/api/auth', require('./routes/auth.routes'));
 app.use('/api/properties', require('./routes/property.routes'));
-// app.use('/api/favorites', require('./routes/favorite.routes'));
+app.use('/api/favorites', require('./routes/favorite.routes'));
 
 // ---- 404 Handler ----
 app.use((req, res, next) => {

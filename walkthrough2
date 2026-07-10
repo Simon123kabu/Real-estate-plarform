@@ -1,0 +1,142 @@
+# Favorites Feature — Walkthrough
+
+## What Was Built
+
+### 3 files created / modified
+
+| File | Change |
+|---|---|
+| [favorite.controller.js](file:///c:/Users/Flexow/Desktop/Intern%20Project/Real-estate-plarform/backend/src/controllers/favorite.controller.js) | 🆕 4 handlers |
+| [favorite.routes.js](file:///c:/Users/Flexow/Desktop/Intern%20Project/Real-estate-plarform/backend/src/routes/favorite.routes.js) | 🆕 4 routes |
+| [app.js](file:///c:/Users/Flexow/Desktop/Intern%20Project/Real-estate-plarform/backend/src/app.js) | ✏️ Uncommented `/api/favorites` registration |
+
+The [`Favorite.js`](file:///c:/Users/Flexow/Desktop/Intern%20Project/Real-estate-plarform/backend/src/models/Favorite.js) model was already complete — no schema changes needed.
+
+---
+
+## How It Connects
+
+```
+User ──── Favorite.user ────► Favorite ◄──── Favorite.property ──── Property
+                              { user, property, createdAt }
+                              unique index prevents duplicates
+```
+
+- Every `Favorite` document is just two ObjectId references + timestamps
+- When fetching a user's list, `property` is populated with full listing details + the agent's contact info — **one query, no extra calls needed**
+
+---
+
+## Endpoints Reference
+
+### `POST /api/favorites/:propertyId` — Toggle ⭐
+The main action button. One endpoint, one handler — the server decides add or remove.
+
+```
+// First press → saves it
+POST /api/favorites/684abc123...
+→ 201  { "success": true, "saved": true, "message": "Property added to favorites." }
+
+// Second press → removes it
+POST /api/favorites/684abc123...
+→ 200  { "success": true, "saved": false, "message": "Property removed from favorites." }
+```
+
+### `GET /api/favorites` — My Saved Listings
+Returns paginated favorites with full property details nested inside.
+
+```
+GET /api/favorites?page=1&limit=12
+→ 200 {
+  "success": true,
+  "count": 2,
+  "total": 2,
+  "totalPages": 1,
+  "currentPage": 1,
+  "data": [
+    {
+      "_id": "...",
+      "createdAt": "2026-07-09T...",
+      "property": {
+        "title": "Modern 3BR Apartment",
+        "price": 85000,
+        "city": "Nairobi",
+        "images": ["https://..."],
+        "agent": { "name": "John", "email": "john@example.com", "phone": "..." }
+      }
+    }
+  ]
+}
+```
+
+### `GET /api/favorites/:propertyId/status` — Heart Icon State
+Used by the property detail page to show filled ❤️ or empty 🤍 on load.
+
+```
+GET /api/favorites/684abc123.../status
+→ 200  { "success": true, "saved": true }
+```
+
+### `DELETE /api/favorites/:propertyId` — Explicit Remove
+Direct remove without toggle behaviour — useful for a "Remove" button on the saved listings page.
+
+```
+DELETE /api/favorites/684abc123...
+→ 200  { "success": true, "saved": false, "message": "Property removed from favorites." }
+
+// If it wasn't saved:
+→ 404  { "success": false, "message": "This property is not in your favorites." }
+```
+
+---
+
+## Edge Cases Handled
+
+| Scenario | What happens |
+|---|---|
+| Favoriting a non-existent property | 404 — property existence checked first |
+| Favoriting same property twice (race condition) | MongoDB duplicate-key error (11000) caught gracefully, returns `saved: true` |
+| Fetching favorites when a property was deleted | Filtered out silently — orphaned favorites don't cause errors |
+| Unauthenticated request | 401 via `isAuthenticated` middleware |
+| Invalid ObjectId format | 400 with clear message |
+
+---
+
+## Quick Testing Guide
+
+**Login first** (session cookie is required for all favorites endpoints):
+```
+POST /api/auth/login
+{ "email": "...", "password": "..." }
+```
+
+**Save a property (replace with a real property ID from your DB):**
+```
+POST /api/favorites/684abc000000000000000001
+```
+
+**Press again — it should toggle off:**
+```
+POST /api/favorites/684abc000000000000000001
+```
+
+**View your saved list:**
+```
+GET /api/favorites
+```
+
+**Check saved state (for a specific property):**
+```
+GET /api/favorites/684abc000000000000000001/status
+```
+
+**Explicitly remove:**
+```
+DELETE /api/favorites/684abc000000000000000001
+```
+
+**Test unauthenticated (no cookie — should return 401):**
+```
+GET /api/favorites
+→ 401 { "message": "You must be logged in to access this resource." }
+```
