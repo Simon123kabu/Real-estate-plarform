@@ -1,7 +1,8 @@
-const { body, validationResult } = require('express-validator');
-const LISTING_TYPES = require('../constants/listingTypes');
+const { body } = require('express-validator');
+const LISTING_TYPES   = require('../constants/listingTypes');
 const PROPERTY_STATUS = require('../constants/propertyStatus');
-const PROPERTY_TYPES = require('../constants/propertyTypes');
+const PROPERTY_TYPES  = require('../constants/propertyTypes');
+const handleValidationErrors = require('./handleValidationErrors');
 
 // ---- Shared field validators ----
 
@@ -15,7 +16,9 @@ const titleRule = body('title')
 const descriptionRule = body('description')
   .trim()
   .notEmpty()
-  .withMessage('Description is required');
+  .withMessage('Description is required')
+  .isLength({ max: 2000 })
+  .withMessage('Description must be 2000 characters or fewer');
 
 const priceRule = body('price')
   .isFloat({ min: 0 })
@@ -29,9 +32,26 @@ const propertyTypeRule = body('propertyType')
   .isIn(Object.values(PROPERTY_TYPES))
   .withMessage(`propertyType must be one of: ${Object.values(PROPERTY_TYPES).join(', ')}`);
 
-const addressRule = body('address').trim().notEmpty().withMessage('Address is required');
-const cityRule = body('city').trim().notEmpty().withMessage('City is required');
-const regionRule = body('region').trim().notEmpty().withMessage('Region is required');
+const addressRule = body('address')
+  .trim()
+  .notEmpty()
+  .withMessage('Address is required')
+  .isLength({ max: 200 })
+  .withMessage('Address must be 200 characters or fewer');
+
+const cityRule = body('city')
+  .trim()
+  .notEmpty()
+  .withMessage('City is required')
+  .isLength({ max: 100 })
+  .withMessage('City must be 100 characters or fewer');
+
+const regionRule = body('region')
+  .trim()
+  .notEmpty()
+  .withMessage('Region is required')
+  .isLength({ max: 100 })
+  .withMessage('Region must be 100 characters or fewer');
 
 const bedroomsRule = body('bedrooms')
   .optional()
@@ -95,21 +115,6 @@ const statusUpdateRules = [
     .isIn(Object.values(PROPERTY_STATUS))
     .withMessage(`status must be one of: ${Object.values(PROPERTY_STATUS).join(', ')}`),
 ];
-
-/**
- * Shared error handler — same pattern used in auth.validator.js
- * Run this AFTER any rule set in the route definition.
- */
-const handleValidationErrors = (req, res, next) => {
-  const errors = validationResult(req);
-  if (!errors.isEmpty()) {
-    return res.status(400).json({
-      success: false,
-      errors: errors.array().map((e) => ({ field: e.path, message: e.msg })),
-    });
-  }
-  next();
-};
 
 module.exports = {
   createPropertyRules,

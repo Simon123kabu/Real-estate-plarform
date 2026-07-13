@@ -1,11 +1,13 @@
 /**
  * property.controller.js
  * ----------------------
- * Handlers for all property CRUD operations.
+ * All handlers use asyncHandler — no try/catch needed.
+ * Errors thrown with AppError are caught by the global handler in app.js.
  *
  * Public:
  *   getProperties    GET  /api/properties
  *   getPropertyById  GET  /api/properties/:id
+ *   getMyListings    GET  /api/properties/my-listings
  *
  * Agent-only (isAgent middleware applied in routes):
  *   createProperty        POST   /api/properties
@@ -15,8 +17,10 @@
  *   uploadPropertyImages  POST   /api/properties/:id/images
  */
 
-const Property = require('../models/Property');
-const User = require('../models/User'); // registers User schema so populate('agent') works
+const Property     = require('../models/Property');
+const User         = require('../models/User'); // registers User schema so populate('agent') works
+const AppError     = require('../utils/AppError');
+const asyncHandler = require('../utils/asyncHandler');
 const { uploadToCloudinary } = require('../utils/cloudinary');
 
 // ---------------------------------------------------------------------------
@@ -84,241 +88,196 @@ const buildSort = (sortParam) => {
 };
 
 // ---------------------------------------------------------------------------
-// GET /api/properties
+// GET /api/properties  — public list with filters & pagination
 // ---------------------------------------------------------------------------
 
-const getProperties = async (req, res) => {
-  try {
-    const page  = Math.max(1, parseInt(req.query.page)  || 1);
-    const limit = Math.min(50, Math.max(1, parseInt(req.query.limit) || 12));
-    const skip  = (page - 1) * limit;
+const getProperties = asyncHandler(async (req, res) => {
+  const page  = Math.max(1, parseInt(req.query.page)  || 1);
+  const limit = Math.min(50, Math.max(1, parseInt(req.query.limit) || 12));
+  const skip  = (page - 1) * limit;
 
-    const filter = buildFilter(req.query);
-    const sort   = buildSort(req.query.sort);
+  const filter = buildFilter(req.query);
+  const sort   = buildSort(req.query.sort);
 
-    const [properties, total] = await Promise.all([
-      Property.find(filter)
-        .populate('agent', 'name email phone')
-        .sort(sort)
-        .skip(skip)
-        .limit(limit),
-      Property.countDocuments(filter),
-    ]);
+  const [properties, total] = await Promise.all([
+    Property.find(filter)
+      .select('title price city region listingType propertyType status bedrooms bathrooms area images agent createdAt')
+      .populate('agent', 'name email phone')
+      .sort(sort)
+      .skip(skip)
+      .limit(limit)
+      .lean(),
+    Property.countDocuments(filter),
+  ]);
 
-    res.status(200).json({
-      success: true,
-      count:       properties.length,
-      total,
-      totalPages:  Math.ceil(total / limit),
-      currentPage: page,
-      data: properties,
-    });
-  } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+  res.status(200).json({
+    success:     true,
+    count:       properties.length,
+    total,
+    totalPages:  Math.ceil(total / limit),
+    currentPage: page,
+    data:        properties,
+  });
+});
+
+// ---------------------------------------------------------------------------
+// GET /api/properties/my-listings  — agent's own listings (agent only)
+// ---------------------------------------------------------------------------
+
+const getMyListings = asyncHandler(async (req, res) => {
+  const page  = Math.max(1, parseInt(req.query.page)  || 1);
+  const limit = Math.min(50, Math.max(1, parseInt(req.query.limit) || 12));
+  const skip  = (page - 1) * limit;
+
+  // Lock agent filter to session — cannot be spoofed via query params
+  const filter = { ...buildFilter(req.query), agent: req.session.userId };
+  const sort   = buildSort(req.query.sort);
+
+  const [properties, total] = await Promise.all([
+    Property.find(filter)
+      .select('title price city region listingType propertyType status bedrooms bathrooms area images agent createdAt')
+      .populate('agent', 'name email phone')
+      .sort(sort)
+      .skip(skip)
+      .limit(limit)
+      .lean(),
+    Property.countDocuments(filter),
+  ]);
+
+  res.status(200).json({
+    success:     true,
+    count:       properties.length,
+    total,
+    totalPages:  Math.ceil(total / limit),
+    currentPage: page,
+    data:        properties,
+  });
+});
+
+// ---------------------------------------------------------------------------
+// GET /api/properties/:id  — single property detail
+// ---------------------------------------------------------------------------
+
+const getPropertyById = asyncHandler(async (req, res) => {
+  const property = await Property.findById(req.params.id)
+    .populate('agent', 'name email phone profileImage')
+    .lean();
+  if (!property) throw new AppError('Property not found.', 404);
+  res.status(200).json({ success: true, data: property });
+});
+
+// ---------------------------------------------------------------------------
+// POST /api/properties  — create a new listing (agent only)
+// ---------------------------------------------------------------------------
+
+const createProperty = asyncHandler(async (req, res) => {
+  const property = await Property.create({
+    ...req.body,
+    agent: req.session.userId,
+  });
+  res.status(201).json({ success: true, data: property });
+});
+
+// ---------------------------------------------------------------------------
+// PUT /api/properties/:id  — update a listing (owner agent only)
+// ---------------------------------------------------------------------------
+
+const updateProperty = asyncHandler(async (req, res) => {
+  // Prevent the client from overriding the agent field or the images array
+  const { agent, images, ...allowedUpdates } = req.body;
+
+  // Use a single update command and include the agent ownership check in the filter query
+  const updated = await Property.findOneAndUpdate(
+    { _id: req.params.id, agent: req.session.userId },
+    { $set: allowedUpdates },
+    { new: true, runValidators: true }
+  ).populate('agent', 'name email phone');
+
+  if (!updated) {
+    throw new AppError('Property not found or access denied.', 404);
   }
-};
+
+  res.status(200).json({ success: true, data: updated });
+});
 
 // ---------------------------------------------------------------------------
-// GET /api/properties/:id
+// DELETE /api/properties/:id  — delete a listing (owner agent only)
 // ---------------------------------------------------------------------------
 
-const getPropertyById = async (req, res) => {
-  try {
-    const property = await Property.findById(req.params.id).populate(
-      'agent',
-      'name email phone profileImage'
-    );
+const deleteProperty = asyncHandler(async (req, res) => {
+  const property = await Property.findById(req.params.id);
+  if (!property) throw new AppError('Property not found.', 404);
 
-    if (!property) {
-      return res.status(404).json({ success: false, message: 'Property not found.' });
-    }
-
-    res.status(200).json({ success: true, data: property });
-  } catch (error) {
-    // Handle invalid ObjectId format
-    if (error.name === 'CastError') {
-      return res.status(400).json({ success: false, message: 'Invalid property ID.' });
-    }
-    res.status(500).json({ success: false, message: error.message });
+  if (property.agent.toString() !== req.session.userId) {
+    throw new AppError('Access denied. You can only delete your own listings.', 403);
   }
-};
+
+  await property.deleteOne();
+  res.status(200).json({ success: true, message: 'Property deleted successfully.' });
+});
 
 // ---------------------------------------------------------------------------
-// POST /api/properties   (agent only)
+// PATCH /api/properties/:id/status  — change status only (owner agent only)
 // ---------------------------------------------------------------------------
 
-const createProperty = async (req, res) => {
-  try {
-    // Attach the logged-in agent as the owner
-    const property = await Property.create({
-      ...req.body,
-      agent: req.session.userId,
-    });
+const updatePropertyStatus = asyncHandler(async (req, res) => {
+  const property = await Property.findById(req.params.id);
+  if (!property) throw new AppError('Property not found.', 404);
 
-    res.status(201).json({ success: true, data: property });
-  } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+  if (property.agent.toString() !== req.session.userId) {
+    throw new AppError('Access denied. You can only update the status of your own listings.', 403);
   }
-};
+
+  property.status = req.body.status;
+  await property.save();
+
+  res.status(200).json({ success: true, data: property });
+});
 
 // ---------------------------------------------------------------------------
-// PUT /api/properties/:id   (agent who created it only)
+// POST /api/properties/:id/images  — upload images (owner agent only)
 // ---------------------------------------------------------------------------
 
-const updateProperty = async (req, res) => {
-  try {
-    const property = await Property.findById(req.params.id);
+const uploadPropertyImages = asyncHandler(async (req, res) => {
+  const property = await Property.findById(req.params.id);
+  if (!property) throw new AppError('Property not found.', 404);
 
-    if (!property) {
-      return res.status(404).json({ success: false, message: 'Property not found.' });
-    }
-
-    // Ownership check — only the agent who created this listing can edit it
-    if (property.agent.toString() !== req.session.userId) {
-      return res.status(403).json({
-        success: false,
-        message: 'Access denied. You can only edit your own listings.',
-      });
-    }
-
-    // Prevent the client from overriding the agent field or the images array
-    const { agent, images, ...allowedUpdates } = req.body;
-
-    const updated = await Property.findByIdAndUpdate(
-      req.params.id,
-      { $set: allowedUpdates },
-      { new: true, runValidators: true }
-    ).populate('agent', 'name email phone');
-
-    res.status(200).json({ success: true, data: updated });
-  } catch (error) {
-    if (error.name === 'CastError') {
-      return res.status(400).json({ success: false, message: 'Invalid property ID.' });
-    }
-    res.status(500).json({ success: false, message: error.message });
+  if (property.agent.toString() !== req.session.userId) {
+    throw new AppError('Access denied. You can only upload images for your own listings.', 403);
   }
-};
 
-// ---------------------------------------------------------------------------
-// DELETE /api/properties/:id   (agent who created it only)
-// ---------------------------------------------------------------------------
-
-const deleteProperty = async (req, res) => {
-  try {
-    const property = await Property.findById(req.params.id);
-
-    if (!property) {
-      return res.status(404).json({ success: false, message: 'Property not found.' });
-    }
-
-    if (property.agent.toString() !== req.session.userId) {
-      return res.status(403).json({
-        success: false,
-        message: 'Access denied. You can only delete your own listings.',
-      });
-    }
-
-    await property.deleteOne();
-
-    res.status(200).json({ success: true, message: 'Property deleted successfully.' });
-  } catch (error) {
-    if (error.name === 'CastError') {
-      return res.status(400).json({ success: false, message: 'Invalid property ID.' });
-    }
-    res.status(500).json({ success: false, message: error.message });
+  if (!req.files || req.files.length === 0) {
+    throw new AppError('No images provided.', 400);
   }
-};
 
-// ---------------------------------------------------------------------------
-// PATCH /api/properties/:id/status   (agent who created it only)
-// ---------------------------------------------------------------------------
-
-const updatePropertyStatus = async (req, res) => {
-  try {
-    const property = await Property.findById(req.params.id);
-
-    if (!property) {
-      return res.status(404).json({ success: false, message: 'Property not found.' });
-    }
-
-    if (property.agent.toString() !== req.session.userId) {
-      return res.status(403).json({
-        success: false,
-        message: 'Access denied. You can only update the status of your own listings.',
-      });
-    }
-
-    property.status = req.body.status;
-    await property.save();
-
-    res.status(200).json({ success: true, data: property });
-  } catch (error) {
-    if (error.name === 'CastError') {
-      return res.status(400).json({ success: false, message: 'Invalid property ID.' });
-    }
-    res.status(500).json({ success: false, message: error.message });
+  // Enforce 10-image cap across existing + new uploads
+  const remaining = 10 - property.images.length;
+  if (remaining <= 0) {
+    throw new AppError('Maximum of 10 images per property has been reached.', 400);
   }
-};
 
-// ---------------------------------------------------------------------------
-// POST /api/properties/:id/images   (agent who created it only)
-// ---------------------------------------------------------------------------
+  const filesToUpload = req.files.slice(0, remaining);
 
-const uploadPropertyImages = async (req, res) => {
-  try {
-    const property = await Property.findById(req.params.id);
+  // Upload all files to Cloudinary in parallel
+  const uploadedUrls = await Promise.all(
+    filesToUpload.map((file) =>
+      uploadToCloudinary(file.buffer, `properties/${property._id}`)
+    )
+  );
 
-    if (!property) {
-      return res.status(404).json({ success: false, message: 'Property not found.' });
-    }
+  property.images.push(...uploadedUrls);
+  await property.save();
 
-    if (property.agent.toString() !== req.session.userId) {
-      return res.status(403).json({
-        success: false,
-        message: 'Access denied. You can only upload images for your own listings.',
-      });
-    }
-
-    if (!req.files || req.files.length === 0) {
-      return res.status(400).json({ success: false, message: 'No images provided.' });
-    }
-
-    // Enforce 10-image cap across existing + new uploads
-    const remaining = 10 - property.images.length;
-    if (remaining <= 0) {
-      return res.status(400).json({
-        success: false,
-        message: 'Maximum of 10 images per property has been reached.',
-      });
-    }
-
-    const filesToUpload = req.files.slice(0, remaining);
-
-    // Upload all files in parallel
-    const uploadedUrls = await Promise.all(
-      filesToUpload.map((file) =>
-        uploadToCloudinary(file.buffer, `properties/${property._id}`)
-      )
-    );
-
-    property.images.push(...uploadedUrls);
-    await property.save();
-
-    res.status(200).json({
-      success: true,
-      message: `${uploadedUrls.length} image(s) uploaded successfully.`,
-      data: property,
-    });
-  } catch (error) {
-    if (error.name === 'CastError') {
-      return res.status(400).json({ success: false, message: 'Invalid property ID.' });
-    }
-    res.status(500).json({ success: false, message: error.message });
-  }
-};
+  res.status(200).json({
+    success: true,
+    message: `${uploadedUrls.length} image(s) uploaded successfully.`,
+    data:    property,
+  });
+});
 
 module.exports = {
   getProperties,
+  getMyListings,
   getPropertyById,
   createProperty,
   updateProperty,

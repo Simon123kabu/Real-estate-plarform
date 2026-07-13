@@ -1,3 +1,5 @@
+const ROLES = require('../constants/roles');
+
 /**
  * isAuthenticated
  * ---------------
@@ -15,7 +17,7 @@
  */
 const isAuthenticated = (req, res, next) => {
   if (req.session && req.session.userId) {
-    return next(); // user is logged in, proceed to the controller
+    return next();
   }
 
   return res.status(401).json({
@@ -34,7 +36,7 @@ const isAuthenticated = (req, res, next) => {
  */
 const isAgent = (req, res, next) => {
   if (req.session && req.session.userId) {
-    if (req.session.role === 'agent') {
+    if (req.session.role === ROLES.AGENT) {
       return next();
     }
     return res.status(403).json({

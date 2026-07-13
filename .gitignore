@@ -145,3 +145,8 @@ vite.config.ts.timestamp-*
 # OS files
 .DS_Store
 Thumbs.db
+
+# Exclude all markdown files except README.md
+*.md
+**/*.md
+![Rr][Ee][Aa][Dd][Mm][Ee].md

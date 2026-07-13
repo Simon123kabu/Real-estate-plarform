@@ -13,6 +13,7 @@ const propertySchema = new mongoose.Schema(
     description: {
       type: String,
       required: [true, 'Description is required'],
+      trim: true,
     },
     price: {
       type: Number,
@@ -70,6 +71,7 @@ const propertySchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',
       required: true,
+      index: true,
     },
   },
   { timestamps: true }
@@ -78,5 +80,11 @@ const propertySchema = new mongoose.Schema(
 // Compound index to speed up common filter combinations
 propertySchema.index({ city: 1, propertyType: 1, price: 1 });
 propertySchema.index({ listingType: 1, status: 1 });
+
+// Clean up orphaned favorites when a property is deleted
+propertySchema.post('deleteOne', { document: true, query: false }, async function () {
+  const Favorite = mongoose.model('Favorite');
+  await Favorite.deleteMany({ property: this._id });
+});
 
 module.exports = mongoose.model('Property', propertySchema);

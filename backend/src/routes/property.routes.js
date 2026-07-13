@@ -1,8 +1,9 @@
 const express = require('express');
-const router = express.Router();
+const router  = express.Router();
 
 const {
   getProperties,
+  getMyListings,
   getPropertyById,
   createProperty,
   updateProperty,
@@ -18,38 +19,54 @@ const {
   handleValidationErrors,
 } = require('../validators/property.validator');
 
-const { isAgent } = require('../middleware/auth.middleware');
-const { uploadMultiple } = require('../middleware/upload.middleware');
+const { propertyQueryRules } = require('../validators/property.query.validator');
+const validateObjectId        = require('../middleware/validateObjectId.middleware');
+const { isAgent }             = require('../middleware/auth.middleware');
+const { uploadMultiple }      = require('../middleware/upload.middleware');
 
-// ---- Public routes (no auth required) ----
+router.get('/', propertyQueryRules, getProperties);
 
-// GET /api/properties          — list with filters & pagination
-router.get('/', getProperties);
+// GET /api/properties/my-listings  — agent's own listings (must be before /:id)
+router.get('/my-listings', isAgent, propertyQueryRules, getMyListings);
 
-// GET /api/properties/:id      — single property detail
-router.get('/:id', getPropertyById);
+// GET /api/properties/:id  — single property detail
+router.get('/:id', validateObjectId('id'), getPropertyById);
 
 // ---- Agent-only routes ----
 
-// POST /api/properties         — create a new listing
+// POST /api/properties  — create a new listing
 router.post('/', isAgent, createPropertyRules, handleValidationErrors, createProperty);
 
-// PUT /api/properties/:id      — full or partial update of a listing
-router.put('/:id', isAgent, updatePropertyRules, handleValidationErrors, updateProperty);
+// PUT /api/properties/:id  — full or partial update of a listing
+router.put(
+  '/:id',
+  isAgent,
+  validateObjectId('id'),
+  updatePropertyRules,
+  handleValidationErrors,
+  updateProperty
+);
 
-// DELETE /api/properties/:id   — permanently remove a listing
-router.delete('/:id', isAgent, deleteProperty);
+// DELETE /api/properties/:id  — permanently remove a listing
+router.delete('/:id', isAgent, validateObjectId('id'), deleteProperty);
 
-// PATCH /api/properties/:id/status — change listing status only
+// PATCH /api/properties/:id/status  — change listing status only
 router.patch(
   '/:id/status',
   isAgent,
+  validateObjectId('id'),
   statusUpdateRules,
   handleValidationErrors,
   updatePropertyStatus
 );
 
-// POST /api/properties/:id/images — upload images (up to 10 total)
-router.post('/:id/images', isAgent, uploadMultiple, uploadPropertyImages);
+// POST /api/properties/:id/images  — upload images (up to 10 total)
+router.post(
+  '/:id/images',
+  isAgent,
+  validateObjectId('id'),
+  uploadMultiple,
+  uploadPropertyImages
+);
 
 module.exports = router;

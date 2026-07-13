@@ -1,136 +1,149 @@
-# Phase 2 Walkthrough — Property Schema & CRUD APIs
+# Security Hardening — Walkthrough
 
-## What Was Built
-
-### 1. Updated Property Schema — [Property.js](file:///c:/Users/Flexow/Desktop/Intern%20Project/Real-estate-plarform/backend/src/models/Property.js)
-
-Three new **optional** fields added (backward-compatible with manually inserted documents):
-
-| Field | Type | Default | Purpose |
-|---|---|---|---|
-| `featured` | Boolean | `false` | Flag for homepage highlights |
-| `amenities` | [String] | `[]` | e.g. `['pool', 'gym', 'parking']` |
-| `coordinates.lat/lng` | Number | — | Future map view |
-
-Also: two new indexes (`listingType + status`, `featured`) and area documented as **square feet**.
+## Packages Installed
+```
+npm install express-rate-limit express-mongo-sanitize
+```
+3 packages added, **0 vulnerabilities** found in 169 packages.
 
 ---
 
-### 2. Cloudinary Utility — [cloudinary.js](file:///c:/Users/Flexow/Desktop/Intern%20Project/Real-estate-plarform/backend/src/utils/cloudinary.js)
+## Files Changed
 
-- Wraps `cloudinary.uploader.upload_stream` in a Promise
-- Applies auto-quality, width limit (1200px), and auto-format (WebP/AVIF) on upload
-- Used by the controller — no routes touch it directly
-
----
-
-### 3. Upload Middleware — [upload.middleware.js](file:///c:/Users/Flexow/Desktop/Intern%20Project/Real-estate-plarform/backend/src/middleware/upload.middleware.js)
-
-- Multer `memoryStorage` — no files written to disk
-- Accepts JPEG, PNG, WebP only
-- 5 MB per-file limit
-- Exports `uploadSingle` and `uploadMultiple` (up to 10 files)
-
----
-
-### 4. Property Validator — [property.validator.js](file:///c:/Users/Flexow/Desktop/Intern%20Project/Real-estate-plarform/backend/src/validators/property.validator.js)
-
-Three rule sets following the same pattern as `auth.validator.js`:
-
-| Export | Used on |
+| File | What Changed |
 |---|---|
-| `createPropertyRules` | `POST /api/properties` |
-| `updatePropertyRules` | `PUT /api/properties/:id` |
-| `statusUpdateRules` | `PATCH /api/properties/:id/status` |
+| [rateLimiter.middleware.js](file:///c:/Users/Flexow/Desktop/Intern%20Project/Real-estate-plarform/backend/src/middleware/rateLimiter.middleware.js) | 🆕 Two-tier rate limiter |
+| [app.js](file:///c:/Users/Flexow/Desktop/Intern%20Project/Real-estate-plarform/backend/src/app.js) | ✏️ 6 security fixes applied |
+| [upload.middleware.js](file:///c:/Users/Flexow/Desktop/Intern%20Project/Real-estate-plarform/backend/src/middleware/upload.middleware.js) | ✏️ Multer errors now AppError |
+| [auth.validator.js](file:///c:/Users/Flexow/Desktop/Intern%20Project/Real-estate-plarform/backend/src/validators/auth.validator.js) | ✏️ Password min raised to 8 |
+| [.env](file:///c:/Users/Flexow/Desktop/Intern%20Project/Real-estate-plarform/backend/.env) | ✏️ Removed dead JWT_SECRET, added NODE_ENV + CLIENT_URL |
+| [.env.example](file:///c:/Users/Flexow/Desktop/Intern%20Project/Real-estate-plarform/backend/.env.example) | ✏️ Fully rewritten — all variables documented |
 
 ---
 
-### 5. Property Controller — [property.controller.js](file:///c:/Users/Flexow/Desktop/Intern%20Project/Real-estate-plarform/backend/src/controllers/property.controller.js)
+## Fix-by-Fix Breakdown
 
-| Handler | Responsibility |
-|---|---|
-| `getProperties` | Filtering + sorting + pagination (`Promise.all` for count+docs) |
-| `getPropertyById` | Single doc with agent populated |
-| `createProperty` | Injects `agent: req.session.userId` automatically |
-| `updateProperty` | Ownership check, strips `agent` & `images` from body |
-| `deleteProperty` | Hard delete with ownership check |
-| `updatePropertyStatus` | Patches `status` only |
-| `uploadPropertyImages` | Parallel Cloudinary uploads, enforces 10-image cap |
+### 1. Rate Limiting ✅
+```
+Auth routes   →  10 requests / 15 min / IP
+All API       →  100 requests / 15 min / IP
+```
+After 10 failed login attempts, the attacker gets:
+```json
+{ "success": false, "message": "Too many attempts from this IP. Please try again after 15 minutes." }
+```
+Response headers also include `RateLimit-Remaining` and `RateLimit-Reset` for clients to respect.
 
 ---
 
-### 6. Property Routes — [property.routes.js](file:///c:/Users/Flexow/Desktop/Intern%20Project/Real-estate-plarform/backend/src/routes/property.routes.js)
+### 2. Body Size Limits ✅
+```js
+// Before
+app.use(express.json());
 
+// After
+app.use(express.json({ limit: '10kb' }));
+app.use(express.urlencoded({ extended: true, limit: '50kb' }));
 ```
-GET    /api/properties               — public
-GET    /api/properties/:id           — public
-POST   /api/properties               — isAgent
-PUT    /api/properties/:id           — isAgent
-DELETE /api/properties/:id           — isAgent
-PATCH  /api/properties/:id/status   — isAgent
-POST   /api/properties/:id/images   — isAgent + uploadMultiple
+A 500MB JSON payload now gets rejected immediately — never touches memory or a controller.
+
+---
+
+### 3. NoSQL Injection Sanitization ✅
+```js
+app.use(mongoSanitize());
+```
+This middleware strips `$` and `.` from `req.body`, `req.query`, and `req.params` before any route handler runs. The attack payload `{ "email": { "$gt": "" } }` becomes `{ "email": {} }` — harmless.
+
+---
+
+### 4. CSRF Protection via `sameSite: 'lax'` ✅
+```js
+// Before
+cookie: { httpOnly: true, secure: ..., maxAge: ... }
+
+// After
+cookie: { httpOnly: true, secure: ..., sameSite: 'lax', maxAge: ... }
+```
+`lax` means: the session cookie is **not sent** on cross-site POST, PUT, PATCH, DELETE requests. A malicious page on `evil.com` can no longer trigger state changes using the victim's cookie.
+
+---
+
+### 5. Session Persistence (connect-mongo) ✅
+```js
+// Before — RAM only, lost on restart
+// (no store configured)
+
+// After — persisted to MongoDB
+store: MongoStore.create({
+  mongoUrl:       process.env.MONGO_URI,
+  collectionName: 'sessions',
+  ttl:            86400,        // auto-expire after 24h
+  autoRemove:     'native',
+})
+```
+Sessions now survive server restarts. Logged-in users stay logged in. Sessions are stored in a `sessions` collection in your MongoDB database and automatically cleaned up when they expire.
+
+---
+
+### 6. Environment-aware Logging ✅
+```js
+// Before
+app.use(morgan('dev'));
+
+// After
+app.use(morgan(process.env.NODE_ENV === 'production' ? 'combined' : 'dev'));
+```
+Locally you still get the coloured dev format. In production you get Apache `combined` format which is what log aggregators (Datadog, Papertrail, etc.) expect.
+
+---
+
+### 7. Multer Errors → AppError ✅
+All Multer errors (wrong file type, file too large, too many files) now go through `wrapMulter()` and arrive at the global error handler as proper `AppError` instances:
+
+```json
+// Wrong file type
+{ "success": false, "message": "Invalid file type. Only JPEG, PNG, and WebP images are allowed." }
+
+// File too large
+{ "success": false, "message": "File too large. Maximum size is 5MB." }
 ```
 
 ---
 
-## Quick Testing Guide
+### 8. Password Minimum Raised to 8 ✅
+```js
+// Before
+body('password').isLength({ min: 6 })
 
-### 1. Get all properties (public)
+// After
+body('password').isLength({ min: 8 })
 ```
-GET http://localhost:5000/api/properties
-```
-
-### 2. Filter + paginate
-```
-GET http://localhost:5000/api/properties?city=Nairobi&listingType=rent&page=1&limit=6&sort=price_asc
-```
-
-### 3. Get single property
-```
-GET http://localhost:5000/api/properties/<id>
-```
-
-### 4. Login as agent first
-```
-POST http://localhost:5000/api/auth/login
-{ "email": "...", "password": "..." }
-```
-
-### 5. Create property (requires agent session cookie)
-```
-POST http://localhost:5000/api/properties
-{
-  "title": "Modern 3BR Apartment",
-  "description": "Spacious apartment in the heart of the city.",
-  "price": 85000,
-  "listingType": "sale",
-  "propertyType": "apartment",
-  "address": "123 Main St",
-  "city": "Nairobi",
-  "region": "Nairobi County",
-  "bedrooms": 3,
-  "bathrooms": 2,
-  "area": 1400,
-  "amenities": ["pool", "parking", "gym"]
-}
-```
-
-### 6. Upload images
-```
-POST http://localhost:5000/api/properties/<id>/images
-Content-Type: multipart/form-data
-Field name: "images"  (up to 10 files)
-```
-
-> [!IMPORTANT]
-> Make sure your `.env` file has `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, and `CLOUDINARY_API_SECRET` set before testing the image upload endpoint.
 
 ---
 
-## Verification Result
+### 9 & 10. `.env` + `.env.example` Cleaned Up ✅
+- Removed dead `JWT_SECRET` (project uses sessions, not JWT)
+- Added `NODE_ENV=development` and `CLIENT_URL`
+- `.env.example` now documents all 8 variables with comments explaining where to get each one
 
-| Check | Result |
-|---|---|
-| All modules load without errors | ✅ |
-| No existing files broken | ✅ |
-| Manually inserted documents compatible | ✅ (additive-only schema change) |
+---
+
+## Final Security Score
+
+| Category | Before | After |
+|---|---|---|
+| Brute force protection | ❌ None | ✅ 10/15min on auth |
+| API abuse prevention | ❌ None | ✅ 100/15min general |
+| NoSQL injection | ❌ Vulnerable | ✅ Sanitized |
+| CSRF | ⚠️ No sameSite | ✅ sameSite: lax |
+| Body DoS | ❌ Unlimited | ✅ 10kb JSON limit |
+| Session persistence | ⚠️ RAM only | ✅ MongoDB backed |
+| Upload error format | ⚠️ Raw 500 | ✅ Clean AppError |
+| Password strength | ⚠️ 6 chars | ✅ 8 chars |
+| Production logging | ⚠️ dev format always | ✅ Environment-aware |
+| Env documentation | ⚠️ Stale/incomplete | ✅ Complete |
+| Security headers | ✅ helmet() | ✅ Unchanged |
+| Password hashing | ✅ bcrypt 12 rounds | ✅ Unchanged |
+| Cookie httpOnly | ✅ | ✅ Unchanged |
+| Ownership checks | ✅ | ✅ Unchanged |
