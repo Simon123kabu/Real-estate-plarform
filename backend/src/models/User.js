@@ -1,5 +1,6 @@
 const mongoose = require('mongoose');
 const ROLES = require('../constants/roles');
+const AGENT_STATUS = require('../constants/agentStatus');
 
 const userSchema = new mongoose.Schema(
   {
@@ -26,6 +27,11 @@ const userSchema = new mongoose.Schema(
       type: String,
       enum: Object.values(ROLES),
       default: ROLES.BUYER,
+    },
+    agentStatus: {
+      type: String,
+      enum: Object.values(AGENT_STATUS),
+      default: AGENT_STATUS.APPROVED,
     },
     phone: {
       type: String,

@@ -8,6 +8,7 @@ const MongoStore   = require('connect-mongo').default;
 const mongoSanitize = require('express-mongo-sanitize');
 
 const { authLimiter, generalLimiter } = require('./middleware/rateLimiter.middleware');
+const { isAuthenticated, isAdmin } = require('./middleware/auth.middleware');
 
 const app = express();
 
@@ -86,6 +87,7 @@ app.get('/api/health', (req, res) => {
 app.use('/api/auth',       authLimiter, require('./routes/auth.routes'));
 app.use('/api/properties', require('./routes/property.routes'));
 app.use('/api/favorites',  require('./routes/favorite.routes'));
+app.use('/api/admin',      isAuthenticated, isAdmin, require('./routes/admin.routes'));
 
 // ---- 404 Handler ----
 app.use((req, res, next) => {

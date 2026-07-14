@@ -48,3 +48,13 @@ const loginRules = [
 ];
 
 module.exports = { registerRules, loginRules, handleValidationErrors };
+
+
+//{
+  //"email": "alex@example.com",
+  //"password": "password123"
+//}
+//{
+  //"email": "bob@example.com",
+  //"password": "password123"
+//} 
