@@ -58,3 +58,13 @@ module.exports = { registerRules, loginRules, handleValidationErrors };
   //"email": "bob@example.com",
   //"password": "password123"
 //} 
+/*
+{ The reason why the subscription field was not showing up for
+Alex Agent in your GET /api/auth/me request is 
+due to a Mongoose query detail:
+
+The profile query inside getMe uses .lean(), which fetches raw
+ JSON documents directly from the database and skips instantiating 
+ Mongoose documents (bypassing model schema defaults). 
+} */
+  

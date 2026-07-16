@@ -13,6 +13,7 @@ const asyncHandler = require('../utils/asyncHandler');
 const ROLES        = require('../constants/roles');
 const AGENT_STATUS = require('../constants/agentStatus');
 const PROPERTY_STATUS = require('../constants/propertyStatus');
+const LISTING_VISIBILITY = require('../constants/listingVisibility');
 
 // ---------------------------------------------------------------------------
 // GET /api/admin/stats — dashboard KPIs
@@ -372,4 +373,100 @@ module.exports = {
   getPropertyById,
   updatePropertyStatus,
   deleteProperty,
+};
+
+// ---------------------------------------------------------------------------
+// GET /api/admin/subscriptions — list agent subscriptions
+// ---------------------------------------------------------------------------
+
+const getSubscriptions = asyncHandler(async (req, res) => {
+  const page  = Math.max(1, parseInt(req.query.page)  || 1);
+  const limit = Math.min(50, Math.max(1, parseInt(req.query.limit) || 20));
+  const skip  = (page - 1) * limit;
+
+  const filter = { role: ROLES.AGENT };
+  if (req.query.plan) filter['subscription.plan'] = req.query.plan;
+  if (req.query.status) filter['subscription.status'] = req.query.status;
+  if (req.query.search && req.query.search.trim()) {
+    const regex = { $regex: req.query.search.trim(), $options: 'i' };
+    filter.$or = [{ name: regex }, { email: regex }];
+  }
+
+  const [agents, total] = await Promise.all([
+    User.find(filter)
+      .select('name email phone subscription createdAt')
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit)
+      .lean(),
+    User.countDocuments(filter),
+  ]);
+
+  res.status(200).json({
+    success: true,
+    data: {
+      subscriptions: agents,
+      pagination: { page, limit, total, pages: Math.ceil(total / limit) }
+    }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// POST /api/admin/subscriptions/override — manual override
+// ---------------------------------------------------------------------------
+
+const overrideSubscription = asyncHandler(async (req, res) => {
+  const { userId, planSlug, status, currentPeriodEnd } = req.body || {};
+  if (!userId || !planSlug) {
+    throw new AppError('userId and planSlug are required.', 400);
+  }
+
+  const user = await User.findById(userId);
+  if (!user || user.role !== ROLES.AGENT) {
+    throw new AppError('Agent user not found.', 404);
+  }
+
+  const targetStatus = status || 'active';
+  const targetEnd = currentPeriodEnd
+    ? new Date(currentPeriodEnd)
+    : new Date(Date.now() + 365 * 24 * 60 * 60 * 1000); // default to 1 year
+
+  user.subscription = {
+    plan: planSlug,
+    status: targetStatus,
+    currentPeriodStart: new Date(),
+    currentPeriodEnd: targetEnd,
+    cancelAtPeriodEnd: false
+  };
+
+  await user.save();
+
+  // Align property listing lifetimes
+  await Property.updateMany(
+    { agent: user._id, visibility: LISTING_VISIBILITY.ACTIVE },
+    { $set: { expiresAt: targetEnd } }
+  );
+
+  res.status(200).json({
+    success: true,
+    message: `Subscription overridden successfully for agent ${user.email}.`,
+    data: user.subscription
+  });
+});
+
+module.exports = {
+  getStats,
+  getUsers,
+  getUserById,
+  changeUserRole,
+  deleteUser,
+  getPendingAgents,
+  approveAgent,
+  rejectAgent,
+  getProperties,
+  getPropertyById,
+  updatePropertyStatus,
+  deleteProperty,
+  getSubscriptions,
+  overrideSubscription
 };

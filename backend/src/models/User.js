@@ -1,6 +1,8 @@
 const mongoose = require('mongoose');
 const ROLES = require('../constants/roles');
 const AGENT_STATUS = require('../constants/agentStatus');
+const SUBSCRIPTION_PLANS = require('../constants/subscriptionPlans');
+const SUBSCRIPTION_STATUS = require('../constants/subscriptionStatus');
 
 const userSchema = new mongoose.Schema(
   {
@@ -40,6 +42,39 @@ const userSchema = new mongoose.Schema(
     profileImage: {
       type: String,
       default: '',
+    },
+    subscription: {
+      plan: {
+        type: String,
+        enum: Object.values(SUBSCRIPTION_PLANS),
+        default: SUBSCRIPTION_PLANS.FREE,
+      },
+      status: {
+        type: String,
+        enum: Object.values(SUBSCRIPTION_STATUS),
+        default: SUBSCRIPTION_STATUS.ACTIVE,
+      },
+      paystackCustomerCode: {
+        type: String,
+      },
+      paystackSubscriptionCode: {
+        type: String,
+      },
+      paystackEmail: {
+        type: String,
+      },
+      currentPeriodStart: {
+        type: Date,
+        default: Date.now,
+      },
+      currentPeriodEnd: {
+        type: Date,
+        default: () => new Date(Date.now() + 90 * 24 * 60 * 60 * 1000), // 90 days free period
+      },
+      cancelAtPeriodEnd: {
+        type: Boolean,
+        default: false,
+      },
     },
   },
   { timestamps: true }

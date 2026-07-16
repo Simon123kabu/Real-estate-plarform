@@ -14,6 +14,8 @@ const {
   getPropertyById,
   updatePropertyStatus,
   deleteProperty,
+  getSubscriptions,
+  overrideSubscription,
 } = require('../controllers/admin.controller');
 
 const {
@@ -73,5 +75,11 @@ router.patch(
 
 // DELETE /api/admin/properties/:id
 router.delete('/properties/:id', ...validateObjectId('id'), deleteProperty);
+
+// GET /api/admin/subscriptions
+router.get('/subscriptions', userListQueryRules, handleValidationErrors, getSubscriptions);
+
+// POST /api/admin/subscriptions/override
+router.post('/subscriptions/override', overrideSubscription);
 
 module.exports = router;

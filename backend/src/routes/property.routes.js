@@ -23,6 +23,7 @@ const { propertyQueryRules } = require('../validators/property.query.validator')
 const validateObjectId        = require('../middleware/validateObjectId.middleware');
 const { isAgent }             = require('../middleware/auth.middleware');
 const { uploadMultiple }      = require('../middleware/upload.middleware');
+const checkListingQuota       = require('../middleware/checkListingQuota.middleware');
 
 router.get('/', propertyQueryRules, getProperties);
 
@@ -35,7 +36,7 @@ router.get('/:id', validateObjectId('id'), getPropertyById);
 // ---- Agent-only routes ----
 
 // POST /api/properties  — create a new listing
-router.post('/', isAgent, createPropertyRules, handleValidationErrors, createProperty);
+router.post('/', isAgent, checkListingQuota, createPropertyRules, handleValidationErrors, createProperty);
 
 // PUT /api/properties/:id  — full or partial update of a listing
 router.put(

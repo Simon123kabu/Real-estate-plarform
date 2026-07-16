@@ -35,7 +35,12 @@ app.use(morgan(process.env.NODE_ENV === 'production' ? 'combined' : 'dev'));
 
 // ---- Body Parsing with Size Limits ----
 // Limits prevent a single oversized request from exhausting server memory (DoS).
-app.use(express.json({ limit: '10kb' }));
+app.use(express.json({
+  limit: '10kb',
+  verify: (req, res, buf) => {
+    req.rawBody = buf.toString();
+  }
+}));
 app.use(express.urlencoded({ extended: true, limit: '50kb' }));
 
 // ---- NoSQL Injection Sanitization ----
@@ -88,6 +93,7 @@ app.use('/api/auth',       authLimiter, require('./routes/auth.routes'));
 app.use('/api/properties', require('./routes/property.routes'));
 app.use('/api/favorites',  require('./routes/favorite.routes'));
 app.use('/api/admin',      isAuthenticated, isAdmin, require('./routes/admin.routes'));
+app.use('/api/subscription', require('./routes/subscription.routes'));
 
 // ---- 404 Handler ----
 app.use((req, res, next) => {

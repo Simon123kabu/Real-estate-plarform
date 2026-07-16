@@ -101,6 +101,7 @@ const getMe = asyncHandler(async (req, res) => {
   
   if (user.role !== ROLES.AGENT) {
     delete user.agentStatus;
+    delete user.subscription;
   }
   
   res.status(200).json({ success: true, data: user });

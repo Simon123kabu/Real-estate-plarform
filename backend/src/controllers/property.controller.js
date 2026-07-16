@@ -22,6 +22,7 @@ const User         = require('../models/User'); // registers User schema so popu
 const AppError     = require('../utils/AppError');
 const asyncHandler = require('../utils/asyncHandler');
 const { uploadToCloudinary } = require('../utils/cloudinary');
+const subscriptionService = require('../services/subscription.service');
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -97,6 +98,11 @@ const getProperties = asyncHandler(async (req, res) => {
   const skip  = (page - 1) * limit;
 
   const filter = buildFilter(req.query);
+  
+  // Public listing filter: only active and non-expired listings
+  filter.visibility = 'active';
+  filter.expiresAt = { $gt: new Date() };
+
   const sort   = buildSort(req.query.sort);
 
   const [properties, total] = await Promise.all([
@@ -135,7 +141,7 @@ const getMyListings = asyncHandler(async (req, res) => {
 
   const [properties, total] = await Promise.all([
     Property.find(filter)
-      .select('title price city region listingType propertyType status bedrooms bathrooms area images agent createdAt')
+      .select('title price city region listingType propertyType status bedrooms bathrooms area images agent createdAt expiresAt visibility expiredAt')
       .populate('agent', 'name email phone')
       .sort(sort)
       .skip(skip)
@@ -144,12 +150,21 @@ const getMyListings = asyncHandler(async (req, res) => {
     Property.countDocuments(filter),
   ]);
 
+  const quota = await subscriptionService.getQuotaStatus(req.session.userId);
+
   res.status(200).json({
     success:     true,
     count:       properties.length,
     total,
     totalPages:  Math.ceil(total / limit),
     currentPage: page,
+    quota: {
+      plan: quota.plan,
+      effectivePlan: quota.effectivePlan,
+      maxActiveListings: quota.maxActiveListings,
+      activeListings: quota.activeListings,
+      canCreateListing: quota.canCreateListing
+    },
     data:        properties,
   });
 });
@@ -163,6 +178,16 @@ const getPropertyById = asyncHandler(async (req, res) => {
     .populate('agent', 'name email phone profileImage')
     .lean();
   if (!property) throw new AppError('Property not found.', 404);
+
+  const isOwner = req.session && req.session.userId && property.agent && property.agent._id.toString() === req.session.userId;
+  const isExpired = property.expiresAt && property.expiresAt <= new Date();
+  const isActive = property.visibility === 'active';
+
+  // If not owner, check listing active and non-expired status
+  if (!isOwner && (!isActive || isExpired)) {
+    throw new AppError('Property not found.', 404);
+  }
+
   res.status(200).json({ success: true, data: property });
 });
 
@@ -171,9 +196,13 @@ const getPropertyById = asyncHandler(async (req, res) => {
 // ---------------------------------------------------------------------------
 
 const createProperty = asyncHandler(async (req, res) => {
+  const expiresAt = req.subscriptionQuota?.subscriptionEndsAt || new Date(Date.now() + 90 * 24 * 60 * 60 * 1000);
+
   const property = await Property.create({
     ...req.body,
     agent: req.session.userId,
+    expiresAt,
+    visibility: 'active'
   });
   res.status(201).json({ success: true, data: property });
 });

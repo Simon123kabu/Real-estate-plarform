@@ -2,6 +2,7 @@ const mongoose = require('mongoose');
 const LISTING_TYPES = require('../constants/listingTypes');
 const PROPERTY_STATUS = require('../constants/propertyStatus');
 const PROPERTY_TYPES = require('../constants/propertyTypes');
+const LISTING_VISIBILITY = require('../constants/listingVisibility');
 
 const propertySchema = new mongoose.Schema(
   {
@@ -73,6 +74,17 @@ const propertySchema = new mongoose.Schema(
       required: true,
       index: true,
     },
+    expiresAt: {
+      type: Date,
+    },
+    visibility: {
+      type: String,
+      enum: Object.values(LISTING_VISIBILITY),
+      default: LISTING_VISIBILITY.ACTIVE,
+    },
+    expiredAt: {
+      type: Date,
+    },
   },
   { timestamps: true }
 );
@@ -80,6 +92,8 @@ const propertySchema = new mongoose.Schema(
 // Compound index to speed up common filter combinations
 propertySchema.index({ city: 1, propertyType: 1, price: 1 });
 propertySchema.index({ listingType: 1, status: 1 });
+propertySchema.index({ visibility: 1, expiresAt: 1 });
+propertySchema.index({ agent: 1, visibility: 1, expiresAt: 1 });
 
 // Clean up orphaned favorites when a property is deleted
 propertySchema.post('deleteOne', { document: true, query: false }, async function () {
