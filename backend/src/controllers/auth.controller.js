@@ -2,6 +2,7 @@ const User         = require('../models/User');
 const AppError     = require('../utils/AppError');
 const asyncHandler = require('../utils/asyncHandler');
 const { hashPassword, comparePassword } = require('../utils/hashPassword');
+const { uploadToCloudinary, deleteFromCloudinary } = require('../utils/cloudinary');
 const ROLES        = require('../constants/roles');
 const AGENT_STATUS = require('../constants/agentStatus');
 
@@ -107,4 +108,35 @@ const getMe = asyncHandler(async (req, res) => {
   res.status(200).json({ success: true, data: user });
 });
 
-module.exports = { register, login, logout, getMe };
+// ============================================================
+// UPLOAD PROFILE IMAGE  —  POST /api/auth/me/profile-image
+// ============================================================
+const uploadProfileImage = asyncHandler(async (req, res) => {
+  const user = await User.findById(req.session.userId);
+  if (!user) throw new AppError('User not found.', 404);
+
+  if (!req.file) {
+    throw new AppError('No image file provided.', 400);
+  }
+
+  // If user already has a profile picture, delete it from Cloudinary to clean up space
+  if (user.profileImage) {
+    await deleteFromCloudinary(user.profileImage);
+  }
+
+  // Upload the new image to Cloudinary (under 'profile_images' folder)
+  const secureUrl = await uploadToCloudinary(req.file.buffer, 'profile_images');
+
+  user.profileImage = secureUrl;
+  await user.save();
+
+  res.status(200).json({
+    success: true,
+    message: 'Profile image updated successfully.',
+    data: {
+      profileImage: user.profileImage,
+    },
+  });
+});
+
+module.exports = { register, login, logout, getMe, uploadProfileImage };

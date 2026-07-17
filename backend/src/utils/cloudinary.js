@@ -51,4 +51,43 @@ const uploadToCloudinary = (buffer, folder = 'properties') => {
   });
 };
 
-module.exports = { uploadToCloudinary };
+/**
+ * Helper to extract the Cloudinary public ID from a secure URL.
+ * E.g., https://res.cloudinary.com/cloud_name/image/upload/v1672531199/profile_images/user_123.jpg
+ * returns 'profile_images/user_123'
+ *
+ * @param {string} url - The full Cloudinary secure URL
+ * @returns {string|null} - The extracted public ID or null if invalid
+ */
+const extractPublicId = (url) => {
+  if (!url || typeof url !== 'string') return null;
+  const parts = url.split('/image/upload/');
+  if (parts.length < 2) return null;
+
+  let publicIdWithFormat = parts[1];
+  const versionMatch = publicIdWithFormat.match(/^v\d+\//);
+  if (versionMatch) {
+    publicIdWithFormat = publicIdWithFormat.substring(versionMatch[0].length);
+  }
+
+  const dotIndex = publicIdWithFormat.lastIndexOf('.');
+  if (dotIndex !== -1) {
+    return publicIdWithFormat.substring(0, dotIndex);
+  }
+  return publicIdWithFormat;
+};
+
+/**
+ * Delete a file from Cloudinary by its secure URL.
+ *
+ * @param {string} url - The full Cloudinary secure URL
+ * @returns {Promise<object|null>} - Cloudinary deletion response
+ */
+const deleteFromCloudinary = async (url) => {
+  if (!url) return null;
+  const publicId = extractPublicId(url);
+  if (!publicId) return null;
+  return cloudinary.uploader.destroy(publicId);
+};
+
+module.exports = { uploadToCloudinary, deleteFromCloudinary };
