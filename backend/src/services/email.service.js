@@ -278,8 +278,39 @@ async function sendSubscriptionExpiredEmail(email, name) {
   return sendMail(email, 'Alert: Your subscription has expired', html);
 }
 
+/**
+ * Sends a password reset link to the user's email.
+ * @param {string} email - Recipient email
+ * @param {string} name - User's name
+ * @param {string} resetUrl - Full reset URL containing the plaintext token
+ */
+async function sendPasswordResetEmail(email, name, resetUrl) {
+  const html = buildHtmlTemplate(
+    'Password Reset Request',
+    `
+      <h2>Hello ${name || 'there'},</h2>
+      <p>We received a request to reset the password for your Real Estate Hub account. Click the button below to set a new password. This link is valid for <strong>10 minutes</strong>.</p>
+      <div style="text-align: center; margin: 32px 0;">
+        <a href="${resetUrl}" class="btn-primary">Reset My Password</a>
+      </div>
+      <p>If you did not request a password reset, you can safely ignore this email — your password will remain unchanged.</p>
+      <div class="info-card">
+        <div class="info-row">
+          <div class="info-label">Link Expires In</div>
+          <div class="info-value" style="color: #f59e0b;">10 minutes</div>
+        </div>
+      </div>
+      <p style="font-size: 14px; color: #6b7280;">If the button above doesn't work, copy and paste the following URL into your browser:</p>
+      <p style="font-size: 12px; word-break: break-all; color: #2563eb;">${resetUrl}</p>
+    `
+  );
+
+  return sendMail(email, 'Password Reset Request — Real Estate Hub', html);
+}
+
 module.exports = {
   sendSubscriptionSuccessEmail,
   sendExpiryReminderEmail,
-  sendSubscriptionExpiredEmail
+  sendSubscriptionExpiredEmail,
+  sendPasswordResetEmail,
 };

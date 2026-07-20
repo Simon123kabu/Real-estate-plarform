@@ -10,6 +10,7 @@ const {
   deleteProperty,
   updatePropertyStatus,
   uploadPropertyImages,
+  deletePropertyImage,
 } = require('../controllers/property.controller');
 
 const {
@@ -68,6 +69,14 @@ router.post(
   validateObjectId('id'),
   uploadMultiple,
   uploadPropertyImages
+);
+
+// DELETE /api/properties/:id/images  — remove a single image by URL
+router.delete(
+  '/:id/images',
+  isAgent,
+  validateObjectId('id'),
+  deletePropertyImage
 );
 
 module.exports = router;

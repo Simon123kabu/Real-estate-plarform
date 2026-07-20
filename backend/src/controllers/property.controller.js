@@ -21,7 +21,7 @@ const Property     = require('../models/Property');
 const User         = require('../models/User'); // registers User schema so populate('agent') works
 const AppError     = require('../utils/AppError');
 const asyncHandler = require('../utils/asyncHandler');
-const { uploadToCloudinary } = require('../utils/cloudinary');
+const { uploadToCloudinary, deleteFromCloudinary } = require('../utils/cloudinary');
 const subscriptionService = require('../services/subscription.service');
 
 // ---------------------------------------------------------------------------
@@ -304,6 +304,40 @@ const uploadPropertyImages = asyncHandler(async (req, res) => {
   });
 });
 
+// ---------------------------------------------------------------------------
+// DELETE /api/properties/:id/images  — remove a single image (owner agent only)
+// ---------------------------------------------------------------------------
+
+const deletePropertyImage = asyncHandler(async (req, res) => {
+  const property = await Property.findById(req.params.id);
+  if (!property) throw new AppError('Property not found.', 404);
+
+  if (property.agent.toString() !== req.session.userId) {
+    throw new AppError('Access denied. You can only edit your own listings.', 403);
+  }
+
+  const { imageUrl } = req.body;
+  if (!imageUrl) throw new AppError('imageUrl is required in the request body.', 400);
+
+  // Check the URL actually belongs to this listing
+  if (!property.images.includes(imageUrl)) {
+    throw new AppError('Image not found on this property listing.', 404);
+  }
+
+  // Remove from Cloudinary (non-blocking — we still remove from DB even if CDN fails)
+  await deleteFromCloudinary(imageUrl);
+
+  // Pull the URL out of the images array
+  property.images = property.images.filter((img) => img !== imageUrl);
+  await property.save();
+
+  res.status(200).json({
+    success: true,
+    message: 'Image removed successfully.',
+    data: property,
+  });
+});
+
 module.exports = {
   getProperties,
   getMyListings,
@@ -313,4 +347,5 @@ module.exports = {
   deleteProperty,
   updatePropertyStatus,
   uploadPropertyImages,
+  deletePropertyImage,
 };
