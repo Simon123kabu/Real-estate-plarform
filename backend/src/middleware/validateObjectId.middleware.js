@@ -1,22 +1,3 @@
-/**
- * validateObjectId.middleware.js
- * ------------------------------
- * Validates that a URL parameter is a valid MongoDB ObjectId format
- * BEFORE the request reaches the database.
- *
- * Without this, an invalid ID (e.g. /api/properties/bad-id) would
- * reach Mongoose, trigger a CastError, and only then get caught by
- * the global error handler. This middleware short-circuits that
- * unnecessary DB round-trip.
- *
- * Usage:
- *   // Validates req.params.id
- *   router.get('/:id', validateObjectId('id'), getPropertyById);
- *
- *   // Validates req.params.propertyId
- *   router.post('/:propertyId', validateObjectId('propertyId'), toggleFavorite);
- */
-
 const { param, validationResult } = require('express-validator');
 
 /**

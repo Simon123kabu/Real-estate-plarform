@@ -4,7 +4,6 @@ const PROPERTY_STATUS = require('../constants/propertyStatus');
 const PROPERTY_TYPES  = require('../constants/propertyTypes');
 const handleValidationErrors = require('./handleValidationErrors');
 
-// ---- Shared field validators ----
 
 const titleRule = body('title')
   .trim()
@@ -68,12 +67,6 @@ const areaRule = body('area')
   .isFloat({ min: 0 })
   .withMessage('Area must be a positive number (in sq ft)');
 
-// ---- Rule sets ----
-
-/**
- * Rules for POST /api/properties (create)
- * All required fields are enforced.
- */
 const createPropertyRules = [
   titleRule,
   descriptionRule,
@@ -88,10 +81,6 @@ const createPropertyRules = [
   areaRule,
 ];
 
-/**
- * Rules for PUT /api/properties/:id (full or partial update)
- * Every field is optional — the controller applies only what is sent.
- */
 const updatePropertyRules = [
   titleRule.optional(),
   descriptionRule.optional(),
@@ -106,10 +95,6 @@ const updatePropertyRules = [
   areaRule,
 ];
 
-/**
- * Rules for PATCH /api/properties/:id/status
- * Only validates the `status` field.
- */
 const statusUpdateRules = [
   body('status')
     .isIn(Object.values(PROPERTY_STATUS))

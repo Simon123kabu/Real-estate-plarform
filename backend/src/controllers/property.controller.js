@@ -1,52 +1,13 @@
-/**
- * property.controller.js
- * ----------------------
- * All handlers use asyncHandler — no try/catch needed.
- * Errors thrown with AppError are caught by the global handler in app.js.
- *
- * Public:
- *   getProperties    GET  /api/properties
- *   getPropertyById  GET  /api/properties/:id
- *   getMyListings    GET  /api/properties/my-listings
- *
- * Agent-only (isAgent middleware applied in routes):
- *   createProperty        POST   /api/properties
- *   updateProperty        PUT    /api/properties/:id
- *   deleteProperty        DELETE /api/properties/:id
- *   updatePropertyStatus  PATCH  /api/properties/:id/status
- *   uploadPropertyImages  POST   /api/properties/:id/images
- */
-
 const Property     = require('../models/Property');
-const User         = require('../models/User'); // registers User schema so populate('agent') works
+const User         = require('../models/User'); 
 const AppError     = require('../utils/AppError');
 const asyncHandler = require('../utils/asyncHandler');
 const { uploadToCloudinary, deleteFromCloudinary } = require('../utils/cloudinary');
 const subscriptionService = require('../services/subscription.service');
 
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
-/**
- * Build a Mongoose query filter object from request query params.
- *
- * Supported params:
- *   keyword      — searches title AND description (case-insensitive regex)
- *   city         — partial match, case-insensitive
- *   region       — partial match, case-insensitive
- *   propertyType — exact enum match
- *   listingType  — exact enum match
- *   status       — exact enum match
- *   minPrice     — price >= value
- *   maxPrice     — price <= value
- *   minBedrooms  — bedrooms >= value
- *   maxBedrooms  — bedrooms <= value
- */
 const buildFilter = (query) => {
   const filter = {};
 
-  // --- Keyword search across title and description ---
   if (query.keyword && query.keyword.trim()) {
     const regex = { $regex: query.keyword.trim(), $options: 'i' };
     filter.$or = [{ title: regex }, { description: regex }];
@@ -58,14 +19,12 @@ const buildFilter = (query) => {
   if (query.listingType)  filter.listingType  = query.listingType;
   if (query.status)       filter.status       = query.status;
 
-  // --- Bedroom range ---
   if (query.minBedrooms || query.maxBedrooms) {
     filter.bedrooms = {};
     if (query.minBedrooms) filter.bedrooms.$gte = Number(query.minBedrooms);
     if (query.maxBedrooms) filter.bedrooms.$lte = Number(query.maxBedrooms);
   }
 
-  // --- Price range ---
   if (query.minPrice || query.maxPrice) {
     filter.price = {};
     if (query.minPrice) filter.price.$gte = Number(query.minPrice);
@@ -75,9 +34,6 @@ const buildFilter = (query) => {
   return filter;
 };
 
-/**
- * Map a sort query string to a Mongoose sort object.
- */
 const buildSort = (sortParam) => {
   switch (sortParam) {
     case 'price_asc':  return { price: 1 };
@@ -183,7 +139,6 @@ const getPropertyById = asyncHandler(async (req, res) => {
   const isExpired = property.expiresAt && property.expiresAt <= new Date();
   const isActive = property.visibility === 'active';
 
-  // If not owner, check listing active and non-expired status
   if (!isOwner && (!isActive || isExpired)) {
     throw new AppError('Property not found.', 404);
   }
@@ -212,10 +167,8 @@ const createProperty = asyncHandler(async (req, res) => {
 // ---------------------------------------------------------------------------
 
 const updateProperty = asyncHandler(async (req, res) => {
-  // Prevent the client from overriding the agent field or the images array
   const { agent, images, ...allowedUpdates } = req.body;
 
-  // Use a single update command and include the agent ownership check in the filter query
   const updated = await Property.findOneAndUpdate(
     { _id: req.params.id, agent: req.session.userId },
     { $set: allowedUpdates },
@@ -279,7 +232,6 @@ const uploadPropertyImages = asyncHandler(async (req, res) => {
     throw new AppError('No images provided.', 400);
   }
 
-  // Enforce 10-image cap across existing + new uploads
   const remaining = 10 - property.images.length;
   if (remaining <= 0) {
     throw new AppError('Maximum of 10 images per property has been reached.', 400);
@@ -287,7 +239,6 @@ const uploadPropertyImages = asyncHandler(async (req, res) => {
 
   const filesToUpload = req.files.slice(0, remaining);
 
-  // Upload all files to Cloudinary in parallel
   const uploadedUrls = await Promise.all(
     filesToUpload.map((file) =>
       uploadToCloudinary(file.buffer, `properties/${property._id}`)
@@ -319,15 +270,12 @@ const deletePropertyImage = asyncHandler(async (req, res) => {
   const { imageUrl } = req.body;
   if (!imageUrl) throw new AppError('imageUrl is required in the request body.', 400);
 
-  // Check the URL actually belongs to this listing
   if (!property.images.includes(imageUrl)) {
     throw new AppError('Image not found on this property listing.', 404);
   }
 
-  // Remove from Cloudinary (non-blocking — we still remove from DB even if CDN fails)
   await deleteFromCloudinary(imageUrl);
 
-  // Pull the URL out of the images array
   property.images = property.images.filter((img) => img !== imageUrl);
   await property.save();
 

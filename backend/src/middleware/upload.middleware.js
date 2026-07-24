@@ -1,19 +1,3 @@
-/**
- * upload.middleware.js
- * --------------------
- * Configures Multer with in-memory storage so file buffers are
- * available on req.file / req.files without writing anything to disk.
- * The buffers are then passed directly to Cloudinary's upload_stream.
- *
- * Exports:
- *   uploadSingle   - for endpoints that accept one file at a time
- *   uploadMultiple - for endpoints that accept up to 10 images
- *
- * Both exports are wrapped so Multer errors are forwarded as clean
- * AppError instances to the global error handler (instead of crashing
- * with an unformatted 500).
- */
-
 const multer  = require('multer');
 const AppError = require('../utils/AppError');
 
@@ -69,10 +53,8 @@ const wrapMulter = (multerMiddleware) => (req, res, next) => {
   });
 };
 
-/** Accept a single file in a field named "image" */
 const uploadSingle = wrapMulter(upload.single('image'));
 
-/** Accept up to 10 files in a field named "images" */
 const uploadMultiple = wrapMulter(upload.array('images', 10));
 
 module.exports = { uploadSingle, uploadMultiple };

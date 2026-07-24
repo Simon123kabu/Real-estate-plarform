@@ -1,14 +1,3 @@
-/**
- * property.query.validator.js
- * ---------------------------
- * Validates query string parameters for:
- *   GET /api/properties
- *   GET /api/properties/my-listings
- *
- * All params are optional. When provided they must be the correct type
- * so that buildFilter() never receives NaN or invalid values.
- */
-
 const { query } = require('express-validator');
 const LISTING_TYPES   = require('../constants/listingTypes');
 const PROPERTY_STATUS = require('../constants/propertyStatus');

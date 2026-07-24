@@ -76,9 +76,6 @@ const userSchema = new mongoose.Schema(
         default: false,
       },
     },
-    // ---- Password Reset Fields ----
-    // Token is stored as a SHA-256 hash for security.
-    // The plain token is emailed to the user; we never store it raw.
     passwordResetToken: {
       type: String,
       select: false, // never returned in normal queries

@@ -4,14 +4,10 @@ const subscriptionService = require('../services/subscription.service');
 const emailService = require('../services/email.service');
 const SUBSCRIPTION_STATUS = require('../constants/subscriptionStatus');
 
-/**
- * Checks for upcoming subscription expiries and triggers reminders or soft-deactivations.
- */
 const checkAndExpireSubscriptions = async () => {
   const now = new Date();
 
   try {
-    // 1. Check for 14-day and 3-day reminders
     const reminderDays = [14, 3];
     for (const days of reminderDays) {
       const targetStart = new Date(now.getTime() + days * 24 * 60 * 60 * 1000);
@@ -40,7 +36,6 @@ const checkAndExpireSubscriptions = async () => {
       }
     }
 
-    // 2. Check for subscriptions that have reached their expiration date
     const expiredUsers = await User.find({
       role: 'agent',
       'subscription.status': { $ne: SUBSCRIPTION_STATUS.EXPIRED },
@@ -58,12 +53,7 @@ const checkAndExpireSubscriptions = async () => {
   }
 };
 
-/**
- * Initializes the subscription background cron job.
- * Runs daily at 1:00 AM (0 1 * * *).
- */
 const start = () => {
-  // Run every day at 1:00 AM
   cron.schedule('0 1 * * *', () => {
     console.log('[Job: Subscription Expiry] Running daily checks...');
     checkAndExpireSubscriptions();

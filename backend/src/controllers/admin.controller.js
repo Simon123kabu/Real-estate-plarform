@@ -1,10 +1,3 @@
-/**
- * admin.controller.js
- * -------------------
- * Platform management handlers for administrators.
- * All routes are protected by isAuthenticated + isAdmin middleware.
- */
-
 const User         = require('../models/User');
 const Property     = require('../models/Property');
 const Favorite     = require('../models/Favorite');

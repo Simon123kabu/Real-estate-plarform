@@ -1,8 +1,5 @@
 const subscriptionService = require('../services/subscription.service');
 
-/**
- * Middleware to check listing quota for agents before creating properties.
- */
 const checkListingQuota = async (req, res, next) => {
   try {
     const quota = await subscriptionService.getQuotaStatus(req.session.userId);
@@ -20,7 +17,6 @@ const checkListingQuota = async (req, res, next) => {
       });
     }
 
-    // Attach quota status to request to avoid querying the DB again in controllers
     req.subscriptionQuota = quota;
     next();
   } catch (error) {

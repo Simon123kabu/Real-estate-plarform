@@ -14,7 +14,6 @@ const AGENT_STATUS = require('../constants/agentStatus');
 const register = asyncHandler(async (req, res) => {
   const { name, email, password, role, phone } = req.body;
 
-  // Duplicate email check
   const existing = await User.findOne({ email });
   if (existing) throw new AppError('An account with this email already exists.', 409);
 
@@ -55,14 +54,12 @@ const register = asyncHandler(async (req, res) => {
 const login = asyncHandler(async (req, res) => {
   const { email, password } = req.body;
 
-  // Include password field (excluded by default in schema)
   const user = await User.findOne({ email }).select('+password');
   if (!user) throw new AppError('Invalid email or password.', 401);
 
   const isMatch = await comparePassword(password, user.password);
   if (!isMatch) throw new AppError('Invalid email or password.', 401);
 
-  // Store minimal data in session
   req.session.userId      = user._id.toString();
   req.session.role        = user.role;
   req.session.agentStatus = user.agentStatus || AGENT_STATUS.APPROVED;
@@ -121,12 +118,10 @@ const uploadProfileImage = asyncHandler(async (req, res) => {
     throw new AppError('No image file provided.', 400);
   }
 
-  // If user already has a profile picture, delete it from Cloudinary to clean up space
   if (user.profileImage) {
     await deleteFromCloudinary(user.profileImage);
   }
 
-  // Upload the new image to Cloudinary (under 'profile_images' folder)
   const secureUrl = await uploadToCloudinary(req.file.buffer, 'profile_images');
 
   user.profileImage = secureUrl;
@@ -148,7 +143,6 @@ const updateProfile = asyncHandler(async (req, res) => {
   const user = await User.findById(req.session.userId);
   if (!user) throw new AppError('User not found.', 404);
 
-  // Only allow name and phone to be updated here
   const { name, phone } = req.body;
 
   if (name !== undefined) user.name = name.trim();
@@ -156,7 +150,6 @@ const updateProfile = asyncHandler(async (req, res) => {
 
   await user.save();
 
-  // Rebuild a clean response without password or reset fields
   const updated = user.toObject();
   delete updated.password;
   delete updated.passwordResetToken;
@@ -180,7 +173,6 @@ const updateProfile = asyncHandler(async (req, res) => {
 const forgotPassword = asyncHandler(async (req, res) => {
   const { email } = req.body;
 
-  // Find user — always return the same generic message to prevent email enumeration
   const user = await User.findOne({ email });
   if (!user) {
     return res.status(200).json({
@@ -189,7 +181,6 @@ const forgotPassword = asyncHandler(async (req, res) => {
     });
   }
 
-  // Generate a cryptographically random 32-byte token (64 hex chars)
   const plainToken = crypto.randomBytes(32).toString('hex');
 
   // Store the SHA-256 hash on the user — never the plain token
@@ -218,10 +209,8 @@ const resetPassword = asyncHandler(async (req, res) => {
 
   if (!token) throw new AppError('Reset token is required.', 400);
 
-  // Hash the incoming plain token to compare against DB
   const hashedToken = crypto.createHash('sha256').update(token).digest('hex');
 
-  // Find user where token matches AND has not expired
   const user = await User.findOne({
     passwordResetToken:   hashedToken,
     passwordResetExpires: { $gt: new Date() },
@@ -231,7 +220,6 @@ const resetPassword = asyncHandler(async (req, res) => {
     throw new AppError('Reset token is invalid or has expired. Please request a new one.', 400);
   }
 
-  // Apply new password
   user.password             = await hashPassword(password);
   user.passwordResetToken   = undefined;
   user.passwordResetExpires = undefined;

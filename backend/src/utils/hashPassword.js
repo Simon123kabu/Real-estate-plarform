@@ -1,9 +1,5 @@
 const bcrypt = require('bcryptjs');
 
-// How many "rounds" bcrypt will run its hashing algorithm.
-// 12 rounds means bcrypt will hash 2^12 = 4096 times internally.
-// Higher = slower to crack, but also slightly slower for the server.
-// 12 is the production sweet-spot (login ~300ms, completely safe).
 const SALT_ROUNDS = 12;
 
 /**

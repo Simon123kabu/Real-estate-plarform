@@ -29,11 +29,7 @@ const checkAndExpireListings = async () => {
   }
 };
 
-/**
- * Initializes the listing expiration background cron job.
- */
 const start = () => {
-  // Run every day at midnight (00:00) local/server time
   cron.schedule('0 0 * * *', async () => {
     console.log('[Job: Listing Expiration] Executing scheduled daily check...');
     await checkAndExpireListings();

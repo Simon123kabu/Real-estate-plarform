@@ -1,16 +1,3 @@
-/**
- * cloudinary.js
- * -------------
- * Configures the Cloudinary SDK using env vars and exports a
- * promise-based helper that uploads a raw Buffer (from Multer's
- * memoryStorage) to a given Cloudinary folder.
- *
- * Required env vars:
- *   CLOUDINARY_CLOUD_NAME
- *   CLOUDINARY_API_KEY
- *   CLOUDINARY_API_SECRET
- */
-
 const cloudinary = require('cloudinary').v2;
 
 cloudinary.config({

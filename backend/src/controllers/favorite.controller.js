@@ -1,15 +1,3 @@
-/**
- * favorite.controller.js
- * ----------------------
- * All handlers use asyncHandler — no try/catch needed.
- * Errors thrown with AppError are caught by the global handler in app.js.
- *
- *   toggleFavorite    POST   /api/favorites/:propertyId
- *   getMyFavorites    GET    /api/favorites
- *   getFavoriteStatus GET    /api/favorites/:propertyId/status
- *   removeFavorite    DELETE /api/favorites/:propertyId
- */
-
 const Favorite     = require('../models/Favorite');
 const Property     = require('../models/Property');
 const AppError     = require('../utils/AppError');
@@ -23,15 +11,12 @@ const toggleFavorite = asyncHandler(async (req, res) => {
   const userId     = req.session.userId;
   const propertyId = req.params.propertyId;
 
-  // Confirm the property exists before creating a favorite for it
   const propertyExists = await Property.exists({ _id: propertyId });
   if (!propertyExists) throw new AppError('Property not found.', 404);
 
-  // Check if already saved
   const existing = await Favorite.findOne({ user: userId, property: propertyId });
 
   if (existing) {
-    // Already saved — remove it
     await existing.deleteOne();
     return res.status(200).json({
       success: true,
@@ -40,9 +25,6 @@ const toggleFavorite = asyncHandler(async (req, res) => {
     });
   }
 
-  // Not saved yet — create it
-  // Note: if a race-condition duplicate key (11000) occurs, the global
-  // error handler will return 409. This is acceptable behaviour.
   await Favorite.create({ user: userId, property: propertyId });
   res.status(201).json({
     success: true,
@@ -79,7 +61,6 @@ const getMyFavorites = asyncHandler(async (req, res) => {
     Favorite.countDocuments({ user: userId }),
   ]);
 
-  // Filter out orphaned favorites where the property was deleted after saving
   const valid = favorites.filter((f) => f.property !== null);
 
   res.status(200).json({

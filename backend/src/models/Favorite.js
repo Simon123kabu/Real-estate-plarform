@@ -16,7 +16,6 @@ const favoriteSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-// Prevent the same user from favoriting the same property twice
 favoriteSchema.index({ user: 1, property: 1 }, { unique: true });
 
 module.exports = mongoose.model('Favorite', favoriteSchema);

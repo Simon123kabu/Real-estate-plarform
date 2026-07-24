@@ -6,10 +6,6 @@ const User = require('../models/User');
 const AppError = require('../utils/AppError');
 const asyncHandler = require('../utils/asyncHandler');
 
-/**
- * GET /api/subscription/plans
- * Public route to list available plans and limits.
- */
 const getPlans = (req, res) => {
   res.status(200).json({
     success: true,
@@ -34,9 +30,9 @@ const getPlans = (req, res) => {
         name: 'Premium Plus',
         slug: SUBSCRIPTION_PLANS.PREMIUM_PLUS,
         price: 179, // suggested pricing
-        maxActiveListings: 10,
+        maxActiveListings: 20,
         listingDurationDays: 365,
-        features: ['Up to 10 active listings', 'Lifespan aligned with subscription duration', 'Email renewal reminders', 'Featured listing tags']
+        features: ['Up to 20 active listings', 'Lifespan aligned with subscription duration', 'Email renewal reminders', 'Featured listing tags']
       }
     ]
   });
