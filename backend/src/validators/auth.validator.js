@@ -102,20 +102,16 @@ module.exports = {
 
 
 //{
-  //"email": "alex@example.com",
+  //"email": "alex@example.com", philip@gmail.com(philip123)
   //"password": "password123"
 //}
 //{
   //"email": "bob@example.com",
-  //"password": "password123"
+  //"password": "password123"    admin@example.com  adminPassword123
 //} 
 /*
-{ The reason why the subscription field was not showing up for
-Alex Agent in your GET /api/auth/me request is 
-due to a Mongoose query detail:
-
+//fish@example.com / fish1234
 The profile query inside getMe uses .lean(), which fetches raw
  JSON documents directly from the database and skips instantiating 
  Mongoose documents (bypassing model schema defaults). 
 } */
-  
