@@ -3,7 +3,7 @@ const { TYPES, NOTIFICATION_MESSAGES } = require('../constants/notification');
 const { getIO } = require('../utils/socket');
 
 class NotificationService {
-  // Create and save notification - SIMPLIFIED FOR ONLY 3 FIELDS
+  // Create and save notification
   async createNotification(data) {
     try {
       const notification = new Notification({
@@ -25,11 +25,14 @@ class NotificationService {
     }
   }
 
-  // Get user notifications
-  async getUserNotifications(userId, limit = 20, skip = 0) {
+  // Get user notifications with populated property details
+  async getUserNotifications(userId, limit = 50, skip = 0) {
     try {
       const notifications = await Notification.find({ userId })
-        .populate('propertyId', 'title images')
+        .populate({
+          path: 'propertyId',
+          select: '_id title images city price address'
+        })
         .populate('senderId', 'name email')
         .sort({ createdAt: -1 })
         .limit(limit)
@@ -82,7 +85,7 @@ class NotificationService {
     }
   }
 
-  // Emit real-time notification via Socket.io - SENDS ONLY 3 FIELDS
+  // Emit real-time notification via Socket.io
   async emitNotification(userId, notification) {
     try {
       const io = getIO();
@@ -94,6 +97,7 @@ class NotificationService {
           NAME: notification.NAME,
           PHONE: notification.PHONE,
           INTERESTED_IN_THE_PROPERTY: notification.INTERESTED_IN_THE_PROPERTY,
+          propertyId: notification.propertyId,
           createdAt: notification.createdAt,
           isRead: notification.isRead
         });

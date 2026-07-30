@@ -1,19 +1,23 @@
 import { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import {
-  Camera, Settings, Share2, LayoutGrid, Bookmark, Plus, Edit2, Trash2,
-  MapPin, Phone, Calendar, X, AlertCircle, ShieldCheck, Zap, Upload, Check
+  Camera, Settings, LayoutGrid, Bookmark, Plus, Edit2, Trash2,
+  MapPin, Phone, Calendar, X, AlertCircle, ShieldCheck, Zap, Upload,
+  Loader2, CheckCircle2, ImagePlus, Home, Eye, ArrowRight
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useFavourites } from '../context/FavouritesContext';
+import Modal from '../components/Modal';
 import '../styles/pages.css';
 
 const API_BASE = import.meta.env.VITE_API_URL;
 const formatMoney = (num) => 'GH₵ ' + Number(num).toLocaleString('en-GH');
 
+const PROPERTY_TYPES = ['apartment', 'house', 'land', 'office', 'townhouse', 'villa'];
+
 export default function Profile() {
   const { user, refreshUser } = useAuth();
-  const { favourites, removeFavourite } = useFavourites();
+  const { favourites, toggleFavourite } = useFavourites();
   const fileInputRef = useRef(null);
   const imageUploadRef = useRef(null);
 
@@ -68,7 +72,7 @@ export default function Profile() {
     }
   }, [user]);
 
-  // Fetch Agent's Own Listings using backend endpoint /api/properties/my-listings
+  // Fetch Agent's Own Listings
   const fetchMyListings = async () => {
     setLoadingListings(true);
     try {
@@ -94,8 +98,9 @@ export default function Profile() {
         credentials: 'include',
       });
       const data = await res.json();
-      if (res.ok && data.success && data.data?.notifications) {
-        setInquiriesCount(data.data.notifications.length || 0);
+      if (res.ok && data.success && data.data) {
+        const count = data.data.total ?? data.data.notifications?.length ?? 0;
+        setInquiriesCount(count);
       }
     } catch {
       // fallback
@@ -131,6 +136,7 @@ export default function Profile() {
       setProfileError('Could not reach the server.');
     } finally {
       setAvatarUploading(false);
+      e.target.value = '';
     }
   };
 
@@ -162,6 +168,14 @@ export default function Profile() {
     } finally {
       setProfileSaving(false);
     }
+  };
+
+  const handleOpenEditProfile = () => {
+    setEditName(user?.name || '');
+    setEditPhone(user?.phone || '');
+    setProfileError('');
+    setProfileSuccess('');
+    setShowEditModal(true);
   };
 
   // Open Create Property Modal
@@ -203,7 +217,6 @@ export default function Profile() {
     setPropError('');
     setShowPropertyModal(true);
 
-    // Fetch full details (description + address) from GET /api/properties/:id
     try {
       const res = await fetch(`${API_BASE}/properties/${prop._id}`, { credentials: 'include' });
       const data = await res.json();
@@ -222,26 +235,37 @@ export default function Profile() {
     }
   };
 
-  // Delete existing property photo
+  // Delete existing property photo (matches DELETE /api/properties/:id/images with body { imageUrl })
   const handleDeleteExistingImage = async (imgUrl) => {
     if (!editingProperty?._id) return;
-    const filename = imgUrl.split('/').pop();
     try {
-      const res = await fetch(`${API_BASE}/properties/${editingProperty._id}/images/${encodeURIComponent(filename)}`, {
+      const res = await fetch(`${API_BASE}/properties/${editingProperty._id}/images`, {
         method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
+        body: JSON.stringify({ imageUrl: imgUrl }),
       });
       const data = await res.json();
       if (res.ok && data.success) {
         setExistingImages((prev) => prev.filter((img) => img !== imgUrl));
         fetchMyListings();
       } else {
-        // Fallback filtering if backend soft deletes
         setExistingImages((prev) => prev.filter((img) => img !== imgUrl));
       }
     } catch {
       setExistingImages((prev) => prev.filter((img) => img !== imgUrl));
     }
+  };
+
+  const handlePropertyImageSelect = (e) => {
+    const files = Array.from(e.target.files || []);
+    if (!files.length) return;
+    setPropertyImageFiles((prev) => [...prev, ...files]);
+    e.target.value = '';
+  };
+
+  const handleRemoveQueuedImage = (index) => {
+    setPropertyImageFiles((prev) => prev.filter((_, i) => i !== index));
   };
 
   // Property Save
@@ -285,7 +309,6 @@ export default function Profile() {
       if (res.ok && data.success) {
         const createdId = isEdit ? editingProperty._id : data.data._id;
 
-        // If new image files were selected, upload them
         if (propertyImageFiles.length > 0 && createdId) {
           const imgFormData = new FormData();
           propertyImageFiles.forEach((file) => imgFormData.append('images', file));
@@ -345,7 +368,7 @@ export default function Profile() {
     return (
       <div className="page-enter" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '60vh' }}>
         <div className="empty-state">
-          <ShieldCheck size={40} />
+          <ShieldCheck size={40} strokeWidth={2.5} color="var(--color-accent-dark, #a17a2c)" />
           <h3>Access Restricted</h3>
           <p>Please sign in to view your profile.</p>
           <Link to="/login" className="btn btn-primary">Sign In</Link>
@@ -362,90 +385,117 @@ export default function Profile() {
     ? new Date(user.createdAt).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
     : 'July 2025';
 
+  const quotaPercent = quota?.maxActiveListings
+    ? Math.min(100, Math.round((quota.activeListings / quota.maxActiveListings) * 100))
+    : 0;
+  const deletingProperty = deletingPropertyId
+    ? myListings.find((p) => p._id === deletingPropertyId)
+    : null;
+
   return (
     <div className="profile-wrap page-enter">
-      {/* ── Seamless Header Container ── */}
+      {/* Header Container */}
       <div className="profile-header-container">
-        {/* Avatar Left */}
+        <div className="profile-cover" aria-hidden="true" />
+
         <div className="profile-avatar-col">
-          <div className="profile-avatar-wrap" style={{ cursor: 'default' }}>
+          <div className="profile-avatar-wrap">
             {user.profileImage ? (
               <img src={user.profileImage} alt={user.name} className="profile-avatar-img" />
             ) : (
               <div className="profile-avatar-fallback">{initials}</div>
             )}
+            {avatarUploading && (
+              <div className="profile-avatar-loading">
+                <Loader2 size={22} strokeWidth={2.5} className="spin" />
+              </div>
+            )}
+            <button
+              type="button"
+              className="profile-avatar-camera"
+              onClick={() => fileInputRef.current?.click()}
+              aria-label="Change profile photo"
+              disabled={avatarUploading}
+            >
+              <Camera size={16} strokeWidth={2.5} />
+            </button>
+            <input
+              type="file"
+              accept="image/*"
+              ref={fileInputRef}
+              onChange={handleAvatarSelect}
+              hidden
+            />
           </div>
         </div>
 
-        {/* Header Details Right */}
         <div className="profile-header-content">
-          {/* Row 1: Username/Name + Roles + Actions */}
           <div className="profile-title-row">
             <h1 className="profile-username">{user.name}</h1>
             <span className="badge badge-light" style={{ textTransform: 'capitalize' }}>
               {user.role}
             </span>
             {user.role === 'agent' && (
-              <Link
-                to="/subscription"
-                className="badge badge-accent"
-                style={{ textDecoration: 'none', textTransform: 'capitalize' }}
-                title="Manage Subscription Plan"
-              >
-                <Zap size={11} /> {user.subscription?.effectivePlan || quota?.plan || 'Free'} Plan
+              <Link to="/subscription" className="badge badge-accent" style={{ textDecoration: 'none' }}>
+                <Zap size={13} strokeWidth={2.5} /> {user.subscription?.effectivePlan || quota?.plan || 'Free'} Plan
               </Link>
             )}
 
-            <button className="btn btn-outline btn-sm" onClick={() => setShowEditModal(true)}>
-              <Settings size={14} /> Edit Profile
+            <button className="btn btn-outline btn-sm profile-edit-btn" onClick={handleOpenEditProfile}>
+              <Settings size={16} strokeWidth={2.5} color="var(--color-accent-dark, #a17a2c)" /> Edit Profile
             </button>
           </div>
 
-          {/* Row 2: Stats (Listings · Saved · Inquiries) */}
           <div className="profile-stats-inline">
             {user.role === 'agent' && (
-              <div>
+              <div className="profile-stat-card">
                 <span className="profile-stat-count">{myListings.length}</span>
                 <span className="profile-stat-label">Listings</span>
               </div>
             )}
-            <div>
+            <div className="profile-stat-card">
               <span className="profile-stat-count">{favourites.length}</span>
               <span className="profile-stat-label">Saved</span>
             </div>
             {user.role === 'agent' && (
-              <div>
+              <div className="profile-stat-card">
                 <span className="profile-stat-count">{inquiriesCount}</span>
                 <span className="profile-stat-label">Inquiries</span>
               </div>
             )}
           </div>
 
-          {/* Row 3: Meta Information */}
           <div className="profile-meta-row">
-            <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-              <MapPin size={13} /> Accra, Ghana
-            </span>
-            {user.phone && (
-              <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                <Phone size={13} /> {user.phone}
-              </span>
-            )}
-            <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-              <Calendar size={13} /> Joined {memberDate}
-            </span>
+            <span><MapPin size={15} strokeWidth={2.5} color="var(--color-accent-dark, #a17a2c)" /> Accra, Ghana</span>
+            {user.phone && <span><Phone size={15} strokeWidth={2.5} color="var(--color-accent-dark, #a17a2c)" /> {user.phone}</span>}
+            <span><Calendar size={15} strokeWidth={2.5} color="var(--color-accent-dark, #a17a2c)" /> Joined {memberDate}</span>
           </div>
+
+          {user.role === 'agent' && quota && (
+            <div className="quota-bar-wrap">
+              <div className="quota-bar-labels">
+                <span>Active listings</span>
+                <span>{quota.activeListings} of {quota.maxActiveListings} used &middot; {quota.plan} plan</span>
+              </div>
+              <div className="quota-bar-track">
+                <div
+                  className={`quota-bar-fill ${quotaPercent >= 100 ? 'quota-bar-fill--full' : ''}`}
+                  style={{ width: `${quotaPercent}%` }}
+                />
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
-      {/* ── Top Border Divider Tab Bar ── */}
+      {/* Tab Bar */}
       <div className="profile-tab-bar">
         {user.role === 'agent' && (
           <button
             className={`profile-tab-item${activeTab === 'listings' ? ' active' : ''}`}
             onClick={() => setActiveTab('listings')}
           >
-            <LayoutGrid size={15} /> My Listings
+            <LayoutGrid size={18} strokeWidth={2.5} color="var(--color-accent-dark, #a17a2c)" /> My Listings
           </button>
         )}
 
@@ -453,71 +503,81 @@ export default function Profile() {
           className={`profile-tab-item${activeTab === 'saved' ? ' active' : ''}`}
           onClick={() => setActiveTab('saved')}
         >
-          <Bookmark size={15} /> Saved Properties
+          <Bookmark size={18} strokeWidth={2.5} color="var(--color-accent-dark, #a17a2c)" /> Saved Properties
         </button>
       </div>
 
-      {/* ── Fixed Grid Container ── */}
+      {/* Grid Container */}
       <div className="profile-grid-container">
-        {/* TAB A: Agent Listings */}
         {activeTab === 'listings' && user.role === 'agent' && (
           <div>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 'var(--space-lg)' }}>
+            <div className="section-header-row">
               <div>
-                <h2 style={{ fontSize: 'var(--text-lg)', fontWeight: 800, fontFamily: 'var(--font-heading)' }}>
-                  Manage Listings
-                </h2>
+                <h2>Manage Listings</h2>
                 {quota && (
-                  <p style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-secondary)' }}>
-                    Quota: {quota.activeListings} of {quota.maxActiveListings} active listings used ({quota.plan} plan)
+                  <p className="section-subtext">
+                    {quota.activeListings} of {quota.maxActiveListings} active listings used ({quota.plan} plan)
                   </p>
                 )}
               </div>
               <button className="btn btn-primary btn-sm" onClick={handleOpenCreateProperty}>
-                <Plus size={15} /> Add Property
+                <Plus size={16} strokeWidth={2.5} /> Add Property
               </button>
             </div>
 
             {loadingListings ? (
-              <div className="grid-3">
-                {Array.from({ length: 3 }).map((_, i) => (
-                  <div key={i} className="my-prop-grid-card">
-                    <div className="skeleton" style={{ height: 200 }} />
-                    <div style={{ padding: '16px' }}>
-                      <div className="skeleton skeleton-line" style={{ width: '65%', height: 16, marginBottom: 8 }} />
-                      <div className="skeleton skeleton-line" style={{ width: '40%', height: 16 }} />
+              <div className="grid-2">
+                {[0, 1].map((i) => (
+                  <div key={i} className="my-prop-grid-card skeleton-card">
+                    <div className="my-prop-img-zone skeleton-block" />
+                    <div className="my-prop-content">
+                      <div className="skeleton-line skeleton-line--title" />
+                      <div className="skeleton-line skeleton-line--price" />
                     </div>
                   </div>
                 ))}
               </div>
+            ) : myListings.length === 0 ? (
+              <div className="empty-state">
+                <Home size={40} strokeWidth={2.5} color="var(--color-accent-dark, #a17a2c)" />
+                <h3>No listings yet</h3>
+                <p>Add your first property so buyers can start finding you.</p>
+                <button className="btn btn-primary" onClick={handleOpenCreateProperty}>
+                  <Plus size={16} strokeWidth={2.5} /> Add Property
+                </button>
+              </div>
             ) : (
-              <div className="grid-3">
+              <div className="grid-2">
                 {myListings.map((prop) => (
                   <div key={prop._id} className="my-prop-grid-card">
                     <div className="my-prop-img-zone">
-                      <img
-                        src={prop.images?.[0] || 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=500'}
-                        alt={prop.title}
-                        className="my-prop-img"
-                      />
-                      <span
-                        className={`badge badge-${prop.status === 'available' ? 'success' : prop.status === 'pending' ? 'warning' : 'error'}`}
-                        style={{ position: 'absolute', top: 10, left: 10 }}
-                      >
+                      <img src={prop.images?.[0] || 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=500'} alt={prop.title} className="my-prop-img" />
+                      <span className={`badge badge-${prop.status === 'available' ? 'success' : 'warning'}`} style={{ position: 'absolute', top: 10, left: 10 }}>
                         {prop.status}
                       </span>
+                      <div style={{ position: 'absolute', top: 10, right: 10, display: 'flex', gap: 6 }}>
+                        <Link
+                          to={`/listings/${prop._id}`}
+                          className="icon-btn-standalone"
+                          aria-label="View property details"
+                          title="View Details"
+                        >
+                          <Eye size={18} strokeWidth={2.5} color="var(--color-accent-dark, #a17a2c)" />
+                        </Link>
+                      </div>
                     </div>
 
                     <div className="my-prop-content">
-                      <h3 className="my-prop-title">{prop.title}</h3>
+                      <Link to={`/listings/${prop._id}`} style={{ textDecoration: 'none' }}>
+                        <h3 className="my-prop-title">{prop.title}</h3>
+                      </Link>
                       <p className="my-prop-price">{formatMoney(prop.price)}</p>
 
                       <div className="my-prop-footer">
                         <select
-                          className="input"
+                          className="input status-select"
                           value={prop.status || 'available'}
                           onChange={(e) => handleStatusChange(prop._id, e.target.value)}
-                          style={{ padding: '3px 6px', fontSize: 'var(--text-xs)', width: 'auto' }}
                         >
                           <option value="available">Available</option>
                           <option value="pending">Pending</option>
@@ -525,22 +585,12 @@ export default function Profile() {
                           <option value="rented">Rented</option>
                         </select>
 
-                        <div style={{ display: 'flex', gap: 4 }}>
-                          <button
-                            className="btn btn-ghost btn-sm"
-                            onClick={() => handleOpenEditProperty(prop)}
-                            title="Edit property"
-                            style={{ padding: '4px 8px' }}
-                          >
-                            <Edit2 size={13} />
+                        <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                          <button className="btn btn-ghost btn-sm" onClick={() => handleOpenEditProperty(prop)} aria-label="Edit property" title="Edit property">
+                            <Edit2 size={16} strokeWidth={2.5} color="var(--color-accent-dark, #a17a2c)" />
                           </button>
-                          <button
-                            className="btn btn-danger btn-sm"
-                            onClick={() => setDeletingPropertyId(prop._id)}
-                            title="Delete property"
-                            style={{ padding: '4px 8px' }}
-                          >
-                            <Trash2 size={13} />
+                          <button className="btn btn-danger btn-sm" onClick={() => setDeletingPropertyId(prop._id)} aria-label="Delete property" title="Delete property">
+                            <Trash2 size={16} strokeWidth={2.5} />
                           </button>
                         </div>
                       </div>
@@ -549,456 +599,229 @@ export default function Profile() {
                 ))}
               </div>
             )}
-
-            {myListings.length === 0 && !loadingListings && (
-              <div className="empty-state">
-                <LayoutGrid size={40} />
-                <h3>No properties listed yet</h3>
-                <p>Click "+ Add Property" to create your first listing.</p>
-                <button className="btn btn-primary" onClick={handleOpenCreateProperty}>
-                  <Plus size={16} /> Add Property
-                </button>
-              </div>
-            )}
           </div>
         )}
 
-        {/* TAB B: Saved Properties */}
         {activeTab === 'saved' && (
           <div>
-            <div style={{ marginBottom: 'var(--space-lg)' }}>
-              <h2 style={{ fontSize: 'var(--text-lg)', fontWeight: 800, fontFamily: 'var(--font-heading)' }}>
-                Saved Properties
-              </h2>
+            <div className="section-header-row">
+              <h2>Saved Properties</h2>
             </div>
 
-            <div className="grid-3">
-              {favourites.map((fav) => (
-                <div key={fav._id} className="my-prop-grid-card">
-                  <div className="my-prop-img-zone">
-                    <img
-                      src={fav.images?.[0] || 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=500'}
-                      alt={fav.title}
-                      className="my-prop-img"
-                    />
-                    <button
-                      className="btn btn-danger btn-sm"
-                      style={{ position: 'absolute', top: 10, right: 10, borderRadius: '50%', width: 30, height: 30, padding: 0, justifyContent: 'center' }}
-                      onClick={() => removeFavourite(fav._id)}
-                      title="Remove from saved"
-                    >
-                      <Trash2 size={13} />
-                    </button>
-                  </div>
-
-                  <div className="my-prop-content">
-                    <Link to={`/listings/${fav._id}`} style={{ textDecoration: 'none', color: 'inherit' }}>
-                      <h3 className="my-prop-title">{fav.title}</h3>
-                    </Link>
-                    <p className="my-prop-price">{formatMoney(fav.price)}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            {favourites.length === 0 && (
+            {favourites.length === 0 ? (
               <div className="empty-state">
-                <Bookmark size={40} />
-                <h3>No saved properties</h3>
-                <p>Browse listings and click the bookmark icon on any property to save it here.</p>
+                <Bookmark size={40} strokeWidth={2.5} color="var(--color-accent-dark, #a17a2c)" />
+                <h3>Nothing saved yet</h3>
+                <p>Tap the bookmark icon on any listing to keep track of it here.</p>
                 <Link to="/listings" className="btn btn-primary">Browse Listings</Link>
+              </div>
+            ) : (
+              <div className="grid-2">
+                {favourites.map((fav) => (
+                  <div key={fav._id} className="my-prop-grid-card">
+                    <div className="my-prop-img-zone">
+                      <img src={fav.images?.[0] || 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=500'} alt={fav.title} className="my-prop-img" />
+                      <div style={{ position: 'absolute', top: 10, right: 10, display: 'flex', gap: 6 }}>
+                        <Link
+                          to={`/listings/${fav._id}`}
+                          className="icon-btn-standalone"
+                          aria-label="View property details"
+                          title="View Details"
+                        >
+                          <Eye size={18} strokeWidth={2.5} color="var(--color-accent-dark, #a17a2c)" />
+                        </Link>
+                        <button
+                          type="button"
+                          className="icon-btn-standalone icon-btn-standalone--danger"
+                          onClick={() => toggleFavourite(fav)}
+                          aria-label="Remove from saved"
+                          title="Remove from Saved"
+                        >
+                          <Trash2 size={18} strokeWidth={2.5} color="#b91c1c" />
+                        </button>
+                      </div>
+                    </div>
+                    <div className="my-prop-content">
+                      <Link to={`/listings/${fav._id}`} style={{ textDecoration: 'none' }}>
+                        <h3 className="my-prop-title">{fav.title}</h3>
+                      </Link>
+                      <p className="my-prop-price">{formatMoney(fav.price)}</p>
+
+                      <div className="my-prop-footer">
+                        <span style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary, #475569)', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                          <MapPin size={15} strokeWidth={2.5} color="var(--color-accent-dark, #a17a2c)" />
+                          {fav.city}{fav.region ? `, ${fav.region}` : ''}
+                        </span>
+                        <Link to={`/listings/${fav._id}`} className="btn btn-outline btn-sm" style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                          View Details <ArrowRight size={15} strokeWidth={2.5} color="var(--color-accent-dark, #a17a2c)" />
+                        </Link>
+                      </div>
+                    </div>
+                  </div>
+                ))}
               </div>
             )}
           </div>
         )}
       </div>
 
-      {/* ── Modal 1: Edit Profile (Includes Profile Picture Upload) ── */}
+      {/* Edit Profile modal */}
       {showEditModal && (
-        <div className="modal-overlay" onClick={() => setShowEditModal(false)}>
-          <div className="modal" onClick={(e) => e.stopPropagation()}>
-            <div style={{ padding: 'var(--space-xl)' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--space-lg)' }}>
-                <h2 style={{ fontSize: 'var(--text-xl)', fontWeight: 800 }}>Edit Profile</h2>
-                <button className="btn btn-ghost btn-sm" onClick={() => setShowEditModal(false)}>
-                  <X size={16} />
-                </button>
+        <Modal title="Edit Profile" onClose={() => setShowEditModal(false)}>
+          <form onSubmit={handleSaveProfile} className="modal-form">
+            <div className="avatar-edit-row">
+              <div className="profile-avatar-wrap profile-avatar-wrap--sm">
+                {user.profileImage ? (
+                  <img src={user.profileImage} alt={user.name} className="profile-avatar-img" />
+                ) : (
+                  <div className="profile-avatar-fallback">{initials}</div>
+                )}
               </div>
-
-              {/* Profile Photo Upload Row inside Modal */}
-              <div
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 'var(--space-md)',
-                  padding: 'var(--space-md)',
-                  background: 'var(--color-surface-elevated)',
-                  borderRadius: 'var(--radius-md)',
-                  border: '1px solid var(--color-border)',
-                  marginBottom: 'var(--space-md)',
-                }}
-              >
-                <div style={{ position: 'relative', width: 64, height: 64, borderRadius: '50%', overflow: 'hidden', flexShrink: 0 }}>
-                  {user.profileImage ? (
-                    <img src={user.profileImage} alt={user.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                  ) : (
-                    <div style={{ width: '100%', height: '100%', background: 'var(--color-primary)', color: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 18 }}>
-                      {initials}
-                    </div>
-                  )}
-                </div>
-
-                <div>
-                  <p style={{ fontSize: 'var(--text-sm)', fontWeight: 700, color: 'var(--color-text-primary)', marginBottom: 4 }}>
-                    Profile Photo
-                  </p>
-                  <button
-                    type="button"
-                    className="btn btn-outline btn-sm"
-                    onClick={() => fileInputRef.current?.click()}
-                    disabled={avatarUploading}
-                  >
-                    <Camera size={13} /> {avatarUploading ? 'Uploading…' : 'Change Profile Picture'}
-                  </button>
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    accept="image/*"
-                    onChange={handleAvatarSelect}
-                    style={{ display: 'none' }}
-                  />
-                </div>
-              </div>
-
-              <form onSubmit={handleSaveProfile} style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-md)' }}>
-                <div>
-                  <label className="label">Full Name</label>
-                  <input className="input" type="text" value={editName} onChange={(e) => setEditName(e.target.value)} />
-                </div>
-
-                <div>
-                  <label className="label">Phone Number</label>
-                  <input className="input" type="tel" value={editPhone} onChange={(e) => setEditPhone(e.target.value)} />
-                </div>
-
-                <div>
-                  <label className="label">Email (Read-only)</label>
-                  <input className="input" type="email" value={user.email} disabled />
-                </div>
-
-                {profileError && <p style={{ color: 'var(--color-error)', fontSize: 'var(--text-sm)' }}>{profileError}</p>}
-                {profileSuccess && <p style={{ color: 'var(--color-success)', fontSize: 'var(--text-sm)' }}>{profileSuccess}</p>}
-
-                <button className="btn btn-primary" type="submit" disabled={profileSaving} style={{ width: '100%', justifyContent: 'center' }}>
-                  {profileSaving ? 'Saving…' : 'Save Changes'}
-                </button>
-              </form>
+              <button type="button" className="btn btn-outline btn-sm" onClick={() => fileInputRef.current?.click()} disabled={avatarUploading}>
+                {avatarUploading ? <Loader2 size={16} strokeWidth={2.5} className="spin" /> : <Upload size={16} strokeWidth={2.5} color="var(--color-accent-dark, #a17a2c)" />}
+                {avatarUploading ? 'Uploading…' : 'Change photo'}
+              </button>
             </div>
-          </div>
-        </div>
+
+            <label className="form-label">Full name</label>
+            <input className="input" value={editName} onChange={(e) => setEditName(e.target.value)} placeholder="Your full name" />
+
+            <label className="form-label">Phone number</label>
+            <input className="input" value={editPhone} onChange={(e) => setEditPhone(e.target.value)} placeholder="e.g. 024 000 0000" />
+
+            {profileError && <p className="form-message form-message--error"><AlertCircle size={15} strokeWidth={2.5} /> {profileError}</p>}
+            {profileSuccess && <p className="form-message form-message--success"><CheckCircle2 size={15} strokeWidth={2.5} /> {profileSuccess}</p>}
+
+            <div className="modal-footer modal-footer--form">
+              <button type="button" className="btn btn-outline" onClick={() => setShowEditModal(false)}>Cancel</button>
+              <button type="submit" className="btn btn-primary" disabled={profileSaving}>
+                {profileSaving ? <Loader2 size={16} strokeWidth={2.5} className="spin" /> : null}
+                {profileSaving ? 'Saving…' : 'Save changes'}
+              </button>
+            </div>
+          </form>
+        </Modal>
       )}
 
-      {/* ── Modal 2: Create / Edit Property Form ── */}
+      {/* Add / Edit Property modal */}
       {showPropertyModal && (
-        <div className="modal-overlay" onClick={() => setShowPropertyModal(false)}>
-          <div className="modal" style={{ maxWidth: 640 }} onClick={(e) => e.stopPropagation()}>
-            <div style={{ padding: 'var(--space-xl)' }}>
-              {/* Header */}
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--space-lg)' }}>
-                <h2 style={{ fontSize: 'var(--text-xl)', fontWeight: 800 }}>
-                  {editingProperty ? `Edit property: ${editingProperty.title}` : 'New property'}
-                </h2>
-                <button className="btn btn-ghost btn-sm" onClick={() => setShowPropertyModal(false)} style={{ padding: 6 }}>
-                  <X size={18} />
-                </button>
+        <Modal
+          title={editingProperty ? 'Edit Property' : 'Add Property'}
+          onClose={() => setShowPropertyModal(false)}
+          width={640}
+        >
+          <form onSubmit={handleSaveProperty} className="modal-form">
+            <label className="form-label">Title</label>
+            <input className="input" value={propTitle} onChange={(e) => setPropTitle(e.target.value)} placeholder="e.g. 3-Bedroom Townhouse in East Legon" />
+
+            <div className="form-row">
+              <div>
+                <label className="form-label">Price (GH₵)</label>
+                <input className="input" type="number" min="0" value={propPrice} onChange={(e) => setPropPrice(e.target.value)} placeholder="e.g. 450000" />
               </div>
-
-              <form onSubmit={handleSaveProperty} style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-md)' }}>
-                {/* 1. Existing Saved Photos Section (If editing) */}
-                {editingProperty && existingImages.length > 0 && (
-                  <div>
-                    <label className="label">Currently Saved Property Photos ({existingImages.length})</label>
-                    <div
-                      style={{
-                        display: 'grid',
-                        gridTemplateColumns: 'repeat(auto-fill, minmax(90px, 1fr))',
-                        gap: 10,
-                        padding: 'var(--space-sm)',
-                        background: 'var(--color-surface-elevated)',
-                        borderRadius: 'var(--radius-lg)',
-                        border: '1px solid var(--color-border)',
-                      }}
-                    >
-                      {existingImages.map((imgUrl, idx) => (
-                        <div
-                          key={idx}
-                          style={{
-                            position: 'relative',
-                            width: '100%',
-                            height: 80,
-                            borderRadius: 'var(--radius-md)',
-                            overflow: 'hidden',
-                            border: '1px solid var(--color-border)',
-                          }}
-                        >
-                          <img
-                            src={imgUrl}
-                            alt={`Saved photo ${idx + 1}`}
-                            style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                          />
-                          <button
-                            type="button"
-                            onClick={() => handleDeleteExistingImage(imgUrl)}
-                            style={{
-                              position: 'absolute',
-                              top: 4,
-                              right: 4,
-                              width: 22,
-                              height: 22,
-                              borderRadius: '50%',
-                              background: 'var(--color-error)',
-                              color: '#ffffff',
-                              border: 'none',
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              cursor: 'pointer',
-                              boxShadow: 'var(--shadow-sm)',
-                            }}
-                            title="Delete this saved photo"
-                          >
-                            <Trash2 size={12} />
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* 2. Drag & Drop Upload Zone for NEW Photos */}
-                <div>
-                  <label className="label">
-                    {editingProperty ? 'Add More Property Photos' : 'Property Photos'}
-                  </label>
-                  <div
-                    onClick={() => imageUploadRef.current?.click()}
-                    style={{
-                      border: '2px dashed var(--color-border)',
-                      borderRadius: 'var(--radius-lg)',
-                      padding: 'var(--space-lg)',
-                      textAlign: 'center',
-                      cursor: 'pointer',
-                      background: 'var(--color-surface-elevated)',
-                      transition: 'border-color var(--transition-fast)',
-                    }}
-                  >
-                    {propertyImageFiles.length === 0 ? (
-                      <>
-                        <Upload size={28} style={{ color: 'var(--color-text-tertiary)', marginBottom: 8 }} />
-                        <p style={{ fontSize: 'var(--text-sm)', fontWeight: 600, color: 'var(--color-text-secondary)' }}>
-                          Drag photos here or click to upload (JPEG, PNG, WebP)
-                        </p>
-                      </>
-                    ) : (
-                      <div>
-                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
-                          <span style={{ fontSize: 'var(--text-xs)', fontWeight: 700, color: 'var(--color-primary)' }}>
-                            ✓ {propertyImageFiles.length} new photo(s) selected
-                          </span>
-                          <span style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-tertiary)', fontWeight: 600 }}>
-                            + Click to add more
-                          </span>
-                        </div>
-
-                        {/* Thumbnail Preview Grid for NEW files */}
-                        <div
-                          style={{
-                            display: 'grid',
-                            gridTemplateColumns: 'repeat(auto-fill, minmax(80px, 1fr))',
-                            gap: 10,
-                            marginTop: 10,
-                          }}
-                          onClick={(e) => e.stopPropagation()}
-                        >
-                          {propertyImageFiles.map((file, idx) => (
-                            <div
-                              key={idx}
-                              style={{
-                                position: 'relative',
-                                width: '100%',
-                                height: 80,
-                                borderRadius: 'var(--radius-md)',
-                                overflow: 'hidden',
-                                border: '1px solid var(--color-border)',
-                              }}
-                            >
-                              <img
-                                src={URL.createObjectURL(file)}
-                                alt={`New upload preview ${idx + 1}`}
-                                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                              />
-                              <button
-                                type="button"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setPropertyImageFiles((prev) => prev.filter((_, i) => i !== idx));
-                                }}
-                                style={{
-                                  position: 'absolute',
-                                  top: 4,
-                                  right: 4,
-                                  width: 20,
-                                  height: 20,
-                                  borderRadius: '50%',
-                                  background: 'rgba(0, 0, 0, 0.75)',
-                                  color: '#ffffff',
-                                  border: 'none',
-                                  display: 'flex',
-                                  alignItems: 'center',
-                                  justifyContent: 'center',
-                                  cursor: 'pointer',
-                                }}
-                                title="Remove photo"
-                              >
-                                <X size={12} />
-                              </button>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                  <input
-                    ref={imageUploadRef}
-                    type="file"
-                    multiple
-                    accept="image/jpeg,image/png,image/webp"
-                    onChange={(e) => {
-                      const newFiles = Array.from(e.target.files);
-                      setPropertyImageFiles((prev) => [...prev, ...newFiles]);
-                    }}
-                    style={{ display: 'none' }}
-                  />
-                </div>
-
-                {/* 3. Title */}
-                <div>
-                  <label className="label">Property Title</label>
-                  <input className="input" type="text" placeholder="e.g. Modern 3-Bedroom Villa with Swimming Pool" value={propTitle} onChange={(e) => setPropTitle(e.target.value)} />
-                </div>
-
-                {/* 4. Description */}
-                <div>
-                  <label className="label">Description</label>
-                  <textarea className="input" rows={3} placeholder="Describe key features, amenities, finishing, compound size, security, and nearby landmarks..." value={propDesc} onChange={(e) => setPropDesc(e.target.value)} style={{ resize: 'vertical' }} />
-                </div>
-
-                {/* 5. Address */}
-                <div>
-                  <label className="label">Street Address</label>
-                  <input className="input" type="text" placeholder="e.g. 14 Admiralty Way, East Legon" value={propAddress} onChange={(e) => setPropAddress(e.target.value)} />
-                </div>
-
-                {/* 6. City & Region (2 cols) */}
-                <div className="grid-2">
-                  <div>
-                    <label className="label">City</label>
-                    <input className="input" type="text" placeholder="e.g. Accra" value={propCity} onChange={(e) => setPropCity(e.target.value)} />
-                  </div>
-                  <div>
-                    <label className="label">Region</label>
-                    <input className="input" type="text" placeholder="e.g. Greater Accra" value={propRegion} onChange={(e) => setPropRegion(e.target.value)} />
-                  </div>
-                </div>
-
-                {/* 7. Price, Bedrooms, Bathrooms (3 cols) */}
-                <div className="grid-3">
-                  <div>
-                    <label className="label">Price (GH₵)</label>
-                    <input className="input" type="number" placeholder="e.g. 250000" value={propPrice} onChange={(e) => setPropPrice(e.target.value)} />
-                  </div>
-                  <div>
-                    <label className="label">Bedrooms</label>
-                    <input className="input" type="number" placeholder="e.g. 3" value={propBeds} onChange={(e) => setPropBeds(e.target.value)} />
-                  </div>
-                  <div>
-                    <label className="label">Bathrooms</label>
-                    <input className="input" type="number" placeholder="e.g. 2" value={propBaths} onChange={(e) => setPropBaths(e.target.value)} />
-                  </div>
-                </div>
-
-                {/* 8. Area & Listing Type (2 cols) */}
-                <div className="grid-2">
-                  <div>
-                    <label className="label">Area (m²)</label>
-                    <input className="input" type="number" placeholder="e.g. 180" value={propArea} onChange={(e) => setPropArea(e.target.value)} />
-                  </div>
-                  <div>
-                    <label className="label">Listing Type</label>
-                    <select className="input" value={propListType} onChange={(e) => setPropListType(e.target.value)}>
-                      <option value="sale">For Sale</option>
-                      <option value="rent">For Rent</option>
-                    </select>
-                  </div>
-                </div>
-
-                {/* 9. Property Type (Full width) */}
-                <div>
-                  <label className="label">Property Category</label>
-                  <select className="input" value={propType} onChange={(e) => setPropType(e.target.value)}>
-                    <option value="house">House</option>
-                    <option value="apartment">Apartment</option>
-                    <option value="villa">Villa</option>
-                    <option value="land">Land</option>
-                    <option value="commercial">Commercial</option>
-                  </select>
-                </div>
-
-                {/* Error Banner */}
-                {propError && (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--color-error)', fontSize: 'var(--text-sm)', background: 'var(--color-error-light)', padding: '10px 14px', borderRadius: 'var(--radius-md)' }}>
-                    <AlertCircle size={15} /> {propError}
-                  </div>
-                )}
-
-                {/* 10. Action Buttons */}
-                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 'var(--space-md)', marginTop: 'var(--space-sm)' }}>
-                  <button type="button" className="btn btn-outline" onClick={() => setShowPropertyModal(false)}>
-                    Cancel
-                  </button>
-                  <button type="submit" className="btn btn-primary" disabled={propSaving}>
-                    {propSaving ? 'Saving…' : editingProperty ? 'Update property' : 'Save property'}
-                  </button>
-                </div>
-              </form>
+              <div>
+                <label className="form-label">Listing type</label>
+                <select className="input" value={propListType} onChange={(e) => setPropListType(e.target.value)}>
+                  <option value="sale">For Sale</option>
+                  <option value="rent">For Rent</option>
+                </select>
+              </div>
             </div>
-          </div>
-        </div>
+
+            <label className="form-label">Description</label>
+            <textarea className="input textarea" rows={3} value={propDesc} onChange={(e) => setPropDesc(e.target.value)} placeholder="Describe the property, finishes, and what makes it stand out" />
+
+            <div className="form-row">
+              <div>
+                <label className="form-label">City</label>
+                <input className="input" value={propCity} onChange={(e) => setPropCity(e.target.value)} placeholder="e.g. Accra" />
+              </div>
+              <div>
+                <label className="form-label">Region</label>
+                <input className="input" value={propRegion} onChange={(e) => setPropRegion(e.target.value)} placeholder="e.g. Greater Accra" />
+              </div>
+            </div>
+
+            <label className="form-label">Address</label>
+            <input className="input" value={propAddress} onChange={(e) => setPropAddress(e.target.value)} placeholder="Street / landmark" />
+
+            <div className="form-row form-row--four">
+              <div>
+                <label className="form-label">Type</label>
+                <select className="input" value={propType} onChange={(e) => setPropType(e.target.value)}>
+                  {PROPERTY_TYPES.map((t) => (
+                    <option key={t} value={t} style={{ textTransform: 'capitalize' }}>{t}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="form-label">Beds</label>
+                <input className="input" type="number" min="0" value={propBeds} onChange={(e) => setPropBeds(e.target.value)} />
+              </div>
+              <div>
+                <label className="form-label">Baths</label>
+                <input className="input" type="number" min="0" value={propBaths} onChange={(e) => setPropBaths(e.target.value)} />
+              </div>
+              <div>
+                <label className="form-label">Area (m&sup2;)</label>
+                <input className="input" type="number" min="0" value={propArea} onChange={(e) => setPropArea(e.target.value)} />
+              </div>
+            </div>
+
+            <label className="form-label">Photos</label>
+            <div className="image-manager-grid">
+              {existingImages.map((img) => (
+                <div key={img} className="image-thumb">
+                  <img src={img} alt="Property" />
+                  <button type="button" className="image-thumb-remove" onClick={() => handleDeleteExistingImage(img)} aria-label="Remove photo">
+                    <X size={14} strokeWidth={2.5} />
+                  </button>
+                </div>
+              ))}
+
+              {propertyImageFiles.map((file, i) => (
+                <div key={`${file.name}-${i}`} className="image-thumb image-thumb--pending">
+                  <img src={URL.createObjectURL(file)} alt="New upload" />
+                  <span className="image-thumb-pending-label">New</span>
+                  <button type="button" className="image-thumb-remove" onClick={() => handleRemoveQueuedImage(i)} aria-label="Remove photo">
+                    <X size={14} strokeWidth={2.5} />
+                  </button>
+                </div>
+              ))}
+
+              <button type="button" className="image-add-tile" onClick={() => imageUploadRef.current?.click()}>
+                <ImagePlus size={20} strokeWidth={2.5} color="var(--color-accent-dark, #a17a2c)" />
+                <span>Add photos</span>
+              </button>
+              <input type="file" accept="image/*" multiple ref={imageUploadRef} onChange={handlePropertyImageSelect} hidden />
+            </div>
+
+            {propError && <p className="form-message form-message--error"><AlertCircle size={15} strokeWidth={2.5} /> {propError}</p>}
+
+            <div className="modal-footer modal-footer--form">
+              <button type="button" className="btn btn-outline" onClick={() => setShowPropertyModal(false)}>Cancel</button>
+              <button type="submit" className="btn btn-primary" disabled={propSaving}>
+                {propSaving ? <Loader2 size={16} strokeWidth={2.5} className="spin" /> : null}
+                {propSaving ? 'Saving…' : editingProperty ? 'Save changes' : 'Publish listing'}
+              </button>
+            </div>
+          </form>
+        </Modal>
       )}
 
-      {/* ── Modal 3: Delete Confirmation ── */}
+      {/* Delete confirmation modal */}
       {deletingPropertyId && (
-        <div className="modal-overlay" onClick={() => setDeletingPropertyId(null)}>
-          <div className="modal" style={{ maxWidth: 400 }} onClick={(e) => e.stopPropagation()}>
-            <div style={{ padding: 'var(--space-xl)', textAlign: 'center' }}>
-              <AlertCircle size={40} style={{ color: 'var(--color-error)', marginBottom: 'var(--space-md)' }} />
-              <h3 style={{ fontSize: 'var(--text-lg)', fontWeight: 800, marginBottom: 'var(--space-sm)' }}>
-                Delete Listing?
-              </h3>
-              <p style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-secondary)', marginBottom: 'var(--space-lg)' }}>
-                Are you sure you want to delete this property? This action cannot be undone.
-              </p>
-              <div style={{ display: 'flex', gap: 'var(--space-sm)' }}>
-                <button className="btn btn-ghost" style={{ flex: 1 }} onClick={() => setDeletingPropertyId(null)}>
-                  Cancel
-                </button>
-                <button className="btn btn-danger" style={{ flex: 1, justifyContent: 'center' }} onClick={handleDeleteProperty}>
-                  Delete
-                </button>
-              </div>
-            </div>
+        <Modal title="Delete this property?" onClose={() => setDeletingPropertyId(null)} width={420}>
+          <p className="confirm-copy">
+            {deletingProperty ? `"${deletingProperty.title}" will be removed` : 'This property will be removed'} from your listings and taken off search results. This can&rsquo;t be undone.
+          </p>
+          <div className="modal-footer modal-footer--form">
+            <button type="button" className="btn btn-outline" onClick={() => setDeletingPropertyId(null)}>Cancel</button>
+            <button type="button" className="btn btn-danger" onClick={handleDeleteProperty}>
+              <Trash2 size={16} strokeWidth={2.5} /> Delete property
+            </button>
           </div>
-        </div>
+        </Modal>
       )}
     </div>
   );

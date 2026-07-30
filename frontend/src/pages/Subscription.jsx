@@ -100,12 +100,25 @@ export default function Subscription() {
   return (
     <div className="listings-page page-enter">
       {/* ── Hero Banner ── */}
-      <div className="listings-hero">
-        <span className="section-label" style={{ background: 'rgba(255,255,255,0.15)', color: '#ffffff', marginBottom: 'var(--space-xs)' }}>
-          <Zap size={12} /> Agent Subscriptions
-        </span>
-        <h1>Agent Membership Plans</h1>
-        <p style={{ maxWidth: 540, margin: '0 auto' }}>
+      <div
+        className="sub-hero"
+        style={{
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          textAlign: 'center',
+          padding: '3.5rem 1.5rem 3rem',
+          background: 'linear-gradient(135deg, #1e362d 0%, #2b4c3f 55%, #152720 100%)',
+          color: '#ffffff',
+          width: '100%',
+          boxSizing: 'border-box'
+        }}
+      >
+        <h1 style={{ textAlign: 'center', margin: '0 0 0.5rem 0', color: '#ffffff', fontFamily: 'var(--font-heading)' }}>
+          Agent Membership Plans
+        </h1>
+        <p style={{ maxWidth: 540, margin: '0 auto', textAlign: 'center', color: 'rgba(255, 255, 255, 0.85)', lineHeight: 1.6 }}>
           Choose a plan to publish more verified property listings across Ghana and reach thousands of active buyers and renters.
         </p>
       </div>

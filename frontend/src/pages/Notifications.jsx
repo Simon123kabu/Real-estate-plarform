@@ -1,32 +1,108 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
-import { Bell, CheckCheck, Trash2, Mail, Phone, ExternalLink, AlertCircle, RefreshCw } from 'lucide-react';
+import {
+  Bell, CheckCheck, Trash2, Phone, ExternalLink, AlertCircle, RefreshCw, Home as HomeIcon
+} from 'lucide-react';
 import '../styles/pages.css';
 
 const API_BASE = import.meta.env.VITE_API_URL;
 
+/* ── Type Badge Config ── */
+const TYPE_CONFIG = {
+  PROPERTY_INQUIRY:     { label: 'Buyer Inquiry',        badgeClass: 'badge-info' },
+  PROPERTY_VIEWED:      { label: 'Property Viewed',      badgeClass: 'badge-light' },
+  LISTING_EXPIRED:      { label: 'Listing Expired',      badgeClass: 'badge-warning' },
+  SUBSCRIPTION_EXPIRED: { label: 'Subscription Expired', badgeClass: 'badge-error' },
+};
+
+const FILTER_TABS = [
+  { key: 'all',    label: 'All' },
+  { key: 'unread', label: 'Unread' },
+];
+
+/* ── Date Grouping Helper ── */
+function getDateGroup(dateStr) {
+  if (!dateStr) return 'Older';
+  const date = new Date(dateStr);
+  const now = new Date();
+  const diffMs = now - date;
+  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+
+  if (diffDays === 0) return 'Today';
+  if (diffDays === 1) return 'Yesterday';
+  if (diffDays < 7) return 'Earlier This Week';
+  if (diffDays < 30) return 'Earlier This Month';
+  return 'Older';
+}
+
+function formatTime(dateStr) {
+  if (!dateStr) return '';
+  const date = new Date(dateStr);
+  const now = new Date();
+  const diffMs = now - date;
+  const diffMins = Math.floor(diffMs / (1000 * 60));
+  const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+
+  if (diffMins < 1) return 'Just now';
+  if (diffMins < 60) return `${diffMins} min ago`;
+  if (diffHours < 24) return `${diffHours} hr${diffHours > 1 ? 's' : ''} ago`;
+  return date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+}
+
+/* Helper to extract real linked property details */
+const getPropDetails = (n) => {
+  if (!n) return null;
+
+  // Case 1: propertyId is populated object
+  if (n.propertyId && typeof n.propertyId === 'object' && n.propertyId._id) {
+    return {
+      id: String(n.propertyId._id),
+      title: n.propertyId.title || n.title || 'Property Listing',
+      city: n.propertyId.city || '',
+      image: n.propertyId.images?.[0] || null,
+    };
+  }
+
+  // Case 2: propertyId is string ID
+  if (n.propertyId && typeof n.propertyId === 'string' && n.propertyId.trim()) {
+    return {
+      id: n.propertyId.trim(),
+      title: n.title ? n.title.replace(/^New inquiry for\s*/i, '').replace(/^Inquiry:\s*/i, '') : 'Property Listing',
+      city: '',
+      image: null,
+    };
+  }
+
+  // Case 3: property fallback object
+  if (n.property && typeof n.property === 'object' && n.property._id) {
+    return {
+      id: String(n.property._id),
+      title: n.property.title || n.title || 'Property Listing',
+      city: n.property.city || '',
+      image: n.property.images?.[0] || null,
+    };
+  }
+
+  return null;
+};
+
 /* ── Notification Row Skeleton ── */
 function NotificationSkeleton() {
   return (
-    <div className="card-modern" style={{ padding: 'var(--space-lg)', background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-lg)' }}>
-      <div style={{ display: 'flex', gap: 'var(--space-md)', alignItems: 'center', marginBottom: 'var(--space-md)' }}>
-        <div className="skeleton" style={{ width: 48, height: 48, borderRadius: 'var(--radius-md)', flexShrink: 0 }} />
-        <div style={{ flex: 1 }}>
-          <div className="skeleton skeleton-line" style={{ width: '60%', height: 16, marginBottom: 6 }} />
-          <div className="skeleton skeleton-line" style={{ width: '35%', height: 12 }} />
-        </div>
-      </div>
+    <div className="notif-card">
+      <div className="skeleton skeleton-line" style={{ width: '40%', height: 16, marginBottom: 12 }} />
       <div className="skeleton skeleton-line" style={{ width: '85%', height: 14, marginBottom: 8 }} />
-      <div className="skeleton skeleton-line" style={{ width: '50%', height: 14 }} />
+      <div className="skeleton skeleton-line" style={{ width: '100%', height: 60, borderRadius: 'var(--radius-md)', marginBottom: 12 }} />
+      <div className="skeleton skeleton-line" style={{ width: '50%', height: 32 }} />
     </div>
   );
 }
 
 export default function Notifications() {
   const [notifications, setNotifications] = useState([]);
-  const [unread, setUnread] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [activeTab, setActiveTab] = useState('all');
 
   useEffect(() => {
     fetchNotifications();
@@ -43,7 +119,6 @@ export default function Notifications() {
 
       if (res.ok && data.success && data.data) {
         setNotifications(data.data.notifications || []);
-        setUnread(data.data.unread || 0);
       } else {
         setError(data.message || 'Could not load notifications.');
       }
@@ -63,10 +138,9 @@ export default function Notifications() {
       const data = await res.json();
       if (res.ok && data.success) {
         setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
-        setUnread(0);
       }
     } catch {
-      // fallback
+      setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
     }
   };
 
@@ -81,10 +155,11 @@ export default function Notifications() {
         setNotifications((prev) =>
           prev.map((n) => (n._id === id ? { ...n, isRead: true } : n))
         );
-        setUnread((prev) => Math.max(0, prev - 1));
       }
     } catch {
-      // fallback
+      setNotifications((prev) =>
+        prev.map((n) => (n._id === id ? { ...n, isRead: true } : n))
+      );
     }
   };
 
@@ -99,45 +174,95 @@ export default function Notifications() {
         setNotifications((prev) => prev.filter((n) => n._id !== id));
       }
     } catch {
-      // fallback
+      setNotifications((prev) => prev.filter((n) => n._id !== id));
     }
   };
 
-  return (
-    <div className="listings-page page-enter">
-      {/* ── Hero Banner ── */}
-      <div className="listings-hero">
-        <span className="section-label" style={{ background: 'rgba(255,255,255,0.15)', color: '#ffffff', marginBottom: 'var(--space-xs)' }}>
-          <Bell size={12} /> Lead Inquiries
-        </span>
-        <h1>Inquiries & Notifications</h1>
-        <p>Property inquiries submitted by buyers and renters</p>
-      </div>
+  const handleCall = (phone) => {
+    if (!phone) return;
+    window.location.href = `tel:${phone}`;
+  };
 
-      <div style={{ maxWidth: 800, margin: '0 auto', padding: 'var(--space-xl) var(--space-lg) var(--space-3xl)' }}>
-        {/* Header Toolbar */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 'var(--space-xl)', flexWrap: 'wrap', gap: 'var(--space-md)' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-sm)' }}>
-            <h2 style={{ fontSize: 'var(--text-xl)', fontWeight: 800, fontFamily: 'var(--font-heading)' }}>
-              All Inquiries
-            </h2>
-            {unread > 0 && (
-              <span className="badge badge-error" style={{ padding: '2px 10px', fontSize: 'var(--text-xs)' }}>
-                {unread} unread
-              </span>
+  const handleWhatsApp = (phone, name, propertyTitle, message) => {
+    if (!phone) return;
+    const cleanPhone = phone.replace(/\D/g, '');
+    const text = encodeURIComponent(
+      `Hello ${name || 'there'}, I received your inquiry regarding "${propertyTitle || 'the property'}". ${
+        message ? `You asked: "${message.slice(0, 80)}..."` : ''
+      } How can I assist you today?`
+    );
+    window.open(`https://wa.me/${cleanPhone}?text=${text}`, '_blank');
+  };
+
+  /* Counts */
+  const unreadCount = notifications.filter((n) => !n.isRead).length;
+
+  /* Filter */
+  const filtered = useMemo(() => {
+    if (activeTab === 'unread') {
+      return notifications.filter((n) => !n.isRead);
+    }
+    return notifications;
+  }, [notifications, activeTab]);
+
+  /* Date Grouping */
+  const grouped = useMemo(() => {
+    const groups = {};
+    filtered.forEach((n) => {
+      const key = getDateGroup(n.createdAt);
+      if (!groups[key]) groups[key] = [];
+      groups[key].push(n);
+    });
+    const order = ['Today', 'Yesterday', 'Earlier This Week', 'Earlier This Month', 'Older'];
+    return order
+      .filter((k) => groups[k] && groups[k].length > 0)
+      .map((k) => ({ label: k, items: groups[k] }));
+  }, [filtered]);
+
+  return (
+    <main className="notif-page page-enter">
+      <div className="notif-container">
+        {/* Header & Filter Controls Box */}
+        <div className="notif-header-box">
+          <div className="notif-toolbar">
+            <div className="notif-header-title">
+              <h1>Notifications</h1>
+              {unreadCount > 0 && (
+                <span className="notif-unread-badge">
+                  {unreadCount} unread
+                </span>
+              )}
+            </div>
+
+            {notifications.length > 0 && unreadCount > 0 && (
+              <button className="btn btn-outline btn-sm" onClick={markAllRead}>
+                <CheckCheck size={14} /> Mark All as Read
+              </button>
             )}
           </div>
 
-          {notifications.length > 0 && unread > 0 && (
-            <button className="btn btn-outline btn-sm" onClick={markAllRead}>
-              <CheckCheck size={14} /> Mark All as Read
-            </button>
-          )}
+          {/* Clean Borderless Filter Tabs (All / Unread only) */}
+          <div className="notif-filter-tabs">
+            {FILTER_TABS.map((tab) => {
+              const badgeVal = tab.key === 'unread' ? unreadCount : notifications.length;
+
+              return (
+                <button
+                  key={tab.key}
+                  className={`notif-tab-btn${activeTab === tab.key ? ' active' : ''}`}
+                  onClick={() => setActiveTab(tab.key)}
+                >
+                  {tab.label}
+                  {badgeVal > 0 && <span className="notif-tab-count">{badgeVal}</span>}
+                </button>
+              );
+            })}
+          </div>
         </div>
 
-        {/* Skeleton loading state */}
+        {/* Loading state */}
         {loading && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-md)' }}>
+          <div className="notif-list">
             {Array.from({ length: 4 }).map((_, i) => (
               <NotificationSkeleton key={i} />
             ))}
@@ -145,7 +270,7 @@ export default function Notifications() {
         )}
 
         {/* Error state */}
-        {error && (
+        {error && !loading && (
           <div className="empty-state">
             <AlertCircle size={40} style={{ color: 'var(--color-error)' }} />
             <h3>{error}</h3>
@@ -156,81 +281,152 @@ export default function Notifications() {
         )}
 
         {/* Empty state */}
-        {!loading && !error && notifications.length === 0 && (
+        {!loading && !error && filtered.length === 0 && (
           <div className="empty-state">
             <Bell size={40} />
-            <h3>No inquiries yet</h3>
-            <p>When buyers submit interested inquiries on your properties, they will appear here.</p>
+            <h3>No notifications found</h3>
+            <p>
+              {activeTab === 'unread'
+                ? 'You have read all your notifications.'
+                : 'When buyers submit inquiries on your property listings, they will appear here.'}
+            </p>
           </div>
         )}
 
-        {/* Notification Cards List */}
-        {!loading && !error && notifications.length > 0 && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-md)' }}>
-            {notifications.map((n) => (
-              <div
-                key={n._id}
-                style={{
-                  background: 'var(--color-surface)',
-                  border: `1px solid ${n.isRead ? 'var(--color-border)' : 'var(--color-primary)'}`,
-                  borderLeft: `4px solid ${n.isRead ? 'var(--color-border)' : 'var(--color-primary)'}`,
-                  borderRadius: 'var(--radius-lg)',
-                  padding: 'var(--space-lg)',
-                  boxShadow: 'var(--shadow-xs)',
-                  transition: 'box-shadow var(--transition-fast)',
-                }}
-              >
-                <div style={{ display: 'flex', gap: 'var(--space-md)', alignItems: 'center', marginBottom: 'var(--space-md)' }}>
-                  {n.propertyId?.images?.[0] ? (
-                    <img
-                      src={n.propertyId.images[0]}
-                      alt={n.propertyId?.title || 'Property'}
-                      style={{ width: 52, height: 52, borderRadius: 'var(--radius-md)', objectFit: 'cover', flexShrink: 0 }}
-                    />
-                  ) : (
-                    <div style={{ width: 52, height: 52, borderRadius: 'var(--radius-md)', background: 'var(--color-primary-light)', color: 'var(--color-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                      <Mail size={22} />
-                    </div>
-                  )}
+        {/* Grouped Notification List */}
+        {!loading && !error && filtered.length > 0 && (
+          <div>
+            {grouped.map((group) => (
+              <div key={group.label} className="notif-date-group">
+                <div className="notif-date-label">{group.label}</div>
+                <div className="notif-list">
+                  {group.items.map((n) => {
+                    const typeCfg = TYPE_CONFIG[n.type] || TYPE_CONFIG.PROPERTY_INQUIRY;
+                    const prop = getPropDetails(n);
 
-                  <div style={{ flex: 1 }}>
-                    <h3 style={{ fontSize: 'var(--text-base)', fontWeight: 700, color: 'var(--color-text-primary)', marginBottom: 2 }}>
-                      {n.title || 'New Property Inquiry'}
-                    </h3>
-                    {n.propertyId && (
-                      <Link to={`/listings/${n.propertyId._id}`} style={{ fontSize: 'var(--text-xs)', fontWeight: 600, color: 'var(--color-primary)', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                        View Property Listing <ExternalLink size={12} />
-                      </Link>
-                    )}
-                  </div>
-                </div>
+                    return (
+                      <div
+                        key={n._id}
+                        className={`notif-card${!n.isRead ? ' unread' : ''}`}
+                        onClick={() => !n.isRead && markOneRead(n._id)}
+                      >
+                        <div className="notif-card-header">
+                          <div className="notif-card-info">
+                            <div className="notif-meta-row">
+                              <span className={`badge ${typeCfg.badgeClass}`}>
+                                {typeCfg.label}
+                              </span>
+                              <span className="notif-time">{formatTime(n.createdAt)}</span>
+                            </div>
 
-                <div style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-secondary)', lineHeight: 1.6, marginBottom: 'var(--space-md)' }}>
-                  <p><strong>From:</strong> {n.NAME}</p>
-                  <p style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 2 }}>
-                    <Phone size={13} /> <strong>Phone:</strong> <a href={`tel:${n.PHONE}`} style={{ color: 'inherit' }}>{n.PHONE}</a>
-                  </p>
-                  <p style={{ fontStyle: 'italic', marginTop: 6, color: 'var(--color-text-primary)' }}>"{n.INTERESTED_IN_THE_PROPERTY}"</p>
-                  <p style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-tertiary)', marginTop: 8 }}>
-                    {new Date(n.createdAt).toLocaleString()}
-                  </p>
-                </div>
+                            <h3 className="notif-card-title">{n.title || 'Property Inquiry'}</h3>
+                          </div>
+                        </div>
 
-                <div style={{ display: 'flex', gap: 'var(--space-sm)' }}>
-                  {!n.isRead && (
-                    <button className="btn btn-outline btn-sm" onClick={() => markOneRead(n._id)}>
-                      Mark as Read
-                    </button>
-                  )}
-                  <button className="btn btn-ghost btn-sm" onClick={() => deleteNotification(n._id)} style={{ color: 'var(--color-error)' }}>
-                    <Trash2 size={14} /> Delete
-                  </button>
+                        {/* Buyer Inquiry Content */}
+                        <div className="notif-card-body">
+                          {n.NAME && (
+                            <p className="notif-sender">
+                              <strong>From:</strong> {n.NAME}
+                            </p>
+                          )}
+                          {n.PHONE && (
+                            <p className="notif-phone">
+                              <Phone size={13} /> <strong>Phone:</strong>{' '}
+                              <a href={`tel:${n.PHONE}`} onClick={(e) => e.stopPropagation()}>
+                                {n.PHONE}
+                              </a>
+                            </p>
+                          )}
+                          {n.INTERESTED_IN_THE_PROPERTY && (
+                            <p className="notif-message-text">"{n.INTERESTED_IN_THE_PROPERTY}"</p>
+                          )}
+                        </div>
+
+                        {/* Prominent Inquired Property Box with "View Property Details" Button (Renders when real property is attached) */}
+                        {prop && (
+                          <div className="notif-prop-box">
+                            <div className="notif-prop-box-left">
+                              {prop.image ? (
+                                <img src={prop.image} alt={prop.title} className="notif-prop-img" loading="lazy" />
+                              ) : (
+                                <div className="notif-prop-placeholder">
+                                  <HomeIcon size={24} />
+                                </div>
+                              )}
+                              <div>
+                                <div className="notif-prop-box-title">{prop.title}</div>
+                                {prop.city && <div className="notif-prop-box-sub">{prop.city}</div>}
+                              </div>
+                            </div>
+
+                            <Link
+                              to={`/listings/${prop.id}`}
+                              className="notif-view-prop-btn"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <ExternalLink size={14} /> View Property Details
+                            </Link>
+                          </div>
+                        )}
+
+                        {/* Action buttons */}
+                        <div className="notif-card-actions">
+                          {n.PHONE && (
+                            <button
+                              className="notif-act-btn"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleCall(n.PHONE);
+                              }}
+                            >
+                              <Phone size={13} /> Call Buyer
+                            </button>
+                          )}
+
+                          {n.PHONE && (
+                            <button
+                              className="notif-act-btn notif-act-whatsapp"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleWhatsApp(n.PHONE, n.NAME, prop?.title, n.INTERESTED_IN_THE_PROPERTY);
+                              }}
+                            >
+                              💬 WhatsApp Reply
+                            </button>
+                          )}
+
+                          {!n.isRead && (
+                            <button
+                              className="notif-act-btn"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                markOneRead(n._id);
+                              }}
+                            >
+                              <CheckCheck size={13} /> Mark Read
+                            </button>
+                          )}
+
+                          <button
+                            className="notif-act-btn notif-delete-btn"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              deleteNotification(n._id);
+                            }}
+                          >
+                            <Trash2 size={13} /> Delete
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             ))}
           </div>
         )}
       </div>
-    </div>
+    </main>
   );
 }

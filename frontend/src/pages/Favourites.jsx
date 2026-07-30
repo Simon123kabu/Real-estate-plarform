@@ -31,7 +31,7 @@ export default function Favourites() {
     <div className="listings-page page-enter">
       {/* ── Hero Banner ── */}
       <div className="listings-hero">
-        <span className="section-label" style={{ background: 'rgba(255,255,255,0.15)', color: '#ffffff', marginBottom: 'var(--space-xs)' }}>
+        <span className="badge badge-light" style={{ background: 'rgba(255,255,255,0.15)', color: '#ffffff', marginBottom: 'var(--space-xs)' }}>
           <Bookmark size={12} fill="currentColor" /> Saved Properties
         </span>
         <h1>My Favourites</h1>
@@ -94,12 +94,12 @@ export default function Favourites() {
 
                   <button
                     className="prop-card-heart active"
-                    style={{ position: 'absolute', top: 12, right: 12, zIndex: 2 }}
+                    style={{ position: 'absolute', top: 12, right: 12, zIndex: 5 }}
                     onClick={(e) => { e.preventDefault(); toggleFavourite(listing); }}
                     aria-label="Remove from saved"
                     title="Remove from saved"
                   >
-                    <Bookmark size={15} fill="currentColor" />
+                    <Bookmark size={20} strokeWidth={2.4} fill="currentColor" />
                   </button>
                 </div>
               );

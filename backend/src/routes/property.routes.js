@@ -34,6 +34,10 @@ router.get('/my-listings', isAgent, propertyQueryRules, getMyListings);
 // GET /api/properties/:id  — single property detail
 router.get('/:id', validateObjectId('id'), getPropertyById);
 
+// POST /api/properties/:id/inquire — submit inquiry directly for a property
+const notificationController = require('../controllers/notification.controller');
+router.post('/:id/inquire', validateObjectId('id'), notificationController.submitPropertyInquiry);
+
 // ---- Agent-only routes ----
 
 // POST /api/properties  — create a new listing

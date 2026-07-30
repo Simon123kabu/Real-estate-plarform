@@ -58,26 +58,34 @@ exports.deleteNotification = asyncHandler(async (req, res) => {
   });
 });
 
-// Submit property inquiry - SIMPLIFIED TO SEND ONLY 3 FIELDS
+// Submit property inquiry
 exports.submitPropertyInquiry = asyncHandler(async (req, res) => {
-  const { propertyId, NAME, PHONE, INTERESTED_IN_THE_PROPERTY } = req.body;
-  const senderId = req.session.userId;
+  const targetPropertyId = req.body.propertyId || req.params.id || req.params.propertyId;
+  const { NAME, PHONE, INTERESTED_IN_THE_PROPERTY } = req.body;
+  const senderId = req.session ? req.session.userId : null;
 
   // Validate required fields
+  if (!targetPropertyId) {
+    return res.status(400).json({
+      success: false,
+      message: 'propertyId is required to submit an inquiry.'
+    });
+  }
+
   if (!NAME || !PHONE || !INTERESTED_IN_THE_PROPERTY) {
     return res.status(400).json({
       success: false,
-      message: 'NAME, PHONE, and INTERESTED_IN_THE_PROPERTY are required'
+      message: 'NAME, PHONE, and INTERESTED_IN_THE_PROPERTY are required.'
     });
   }
 
   const Property = require('../models/Property');
-  const property = await Property.findById(propertyId);
+  const property = await Property.findById(targetPropertyId);
 
   if (!property) {
     return res.status(404).json({
       success: false,
-      message: 'Property not found'
+      message: 'Property not found.'
     });
   }
 
@@ -88,7 +96,7 @@ exports.submitPropertyInquiry = asyncHandler(async (req, res) => {
     NAME,
     PHONE,
     INTERESTED_IN_THE_PROPERTY,
-    propertyId,
+    propertyId: targetPropertyId,
     senderId
   });
 

@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { useParams, Link } from 'react-router-dom';
 import {
-  MapPin, Bed, Bath, Maximize2, Bookmark, Phone, Mail,
-  ChevronRight, ChevronLeft, X, CheckCircle2, AlertCircle, Home as HomeIcon, Camera
+  MapPin, Bookmark, ChevronRight, ChevronLeft, X, CheckCircle2, AlertCircle,
+  Home as HomeIcon, Camera, Shield
 } from 'lucide-react';
 import { useFavourites } from '../context/FavouritesContext';
 import '../styles/pages.css';
@@ -20,14 +21,77 @@ const STATUS_CLASS = {
 /* ── Gallery skeleton ── */
 function GallerySkeleton() {
   return (
-    <div className="detail-gallery-carousel">
-      <div className="skeleton detail-gallery-stage" />
-      <div style={{ display: 'flex', gap: 10, marginTop: 12 }}>
-        <div className="skeleton" style={{ width: 100, height: 70, borderRadius: 'var(--radius-md)' }} />
-        <div className="skeleton" style={{ width: 100, height: 70, borderRadius: 'var(--radius-md)' }} />
-        <div className="skeleton" style={{ width: 100, height: 70, borderRadius: 'var(--radius-md)' }} />
+    <div className="dtl-gallery-section">
+      <div className="dtl-gallery-grid">
+        <div className="skeleton dtl-gallery-item dtl-gallery-hero" style={{ height: '100%' }} />
+        <div className="skeleton dtl-gallery-item" style={{ height: '100%' }} />
+        <div className="skeleton dtl-gallery-item" style={{ height: '100%' }} />
+        <div className="skeleton dtl-gallery-item" style={{ height: '100%' }} />
+        <div className="skeleton dtl-gallery-item" style={{ height: '100%' }} />
       </div>
     </div>
+  );
+}
+
+/* ── Lightbox Component ── */
+function Lightbox({ images, startIndex, onClose }) {
+  const [current, setCurrent] = useState(startIndex);
+
+  useEffect(() => {
+    const handleKey = (e) => {
+      if (e.key === 'Escape') onClose();
+      if (e.key === 'ArrowRight') setCurrent((i) => (i + 1) % images.length);
+      if (e.key === 'ArrowLeft') setCurrent((i) => (i - 1 + images.length) % images.length);
+    };
+    document.addEventListener('keydown', handleKey);
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.removeEventListener('keydown', handleKey);
+      document.body.style.overflow = '';
+    };
+  }, [images.length, onClose]);
+
+  return createPortal(
+    <div className="dtl-lightbox-overlay" onClick={onClose}>
+      <button className="dtl-lightbox-close" onClick={onClose} aria-label="Close photo modal">
+        <X size={22} />
+      </button>
+
+      {images.length > 1 && (
+        <button
+          className="dtl-lightbox-nav dtl-lightbox-prev"
+          onClick={(e) => {
+            e.stopPropagation();
+            setCurrent((i) => (i - 1 + images.length) % images.length);
+          }}
+          aria-label="Previous photo"
+        >
+          <ChevronLeft size={28} />
+        </button>
+      )}
+
+      <div className="dtl-lightbox-content" onClick={(e) => e.stopPropagation()}>
+        <img src={images[current]} alt={`Photo ${current + 1}`} className="dtl-lightbox-img" />
+      </div>
+
+      {images.length > 1 && (
+        <button
+          className="dtl-lightbox-nav dtl-lightbox-next"
+          onClick={(e) => {
+            e.stopPropagation();
+            setCurrent((i) => (i + 1) % images.length);
+          }}
+          aria-label="Next photo"
+        >
+          <ChevronRight size={28} />
+        </button>
+      )}
+
+      <div className="dtl-lightbox-counter">
+        <Camera size={14} /> {current + 1} / {images.length}
+      </div>
+    </div>,
+    document.body
   );
 }
 
@@ -50,10 +114,12 @@ function InquiryModal({ listing, onClose }) {
 
     setSubmitting(true);
     try {
-      const res = await fetch(`${API_BASE}/properties/${listing._id}/inquire`, {
+      const res = await fetch(`${API_BASE}/notifications/inquiry`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({
+          propertyId: listing._id,
           NAME: name.trim(),
           PHONE: phone.trim(),
           INTERESTED_IN_THE_PROPERTY: message.trim(),
@@ -141,7 +207,9 @@ function InquiryModal({ listing, onClose }) {
   );
 }
 
-/* ── Main Detail Page ── */
+/* ══════════════════════════════════════════════════════════ */
+/*  Main Detail Page                                         */
+/* ══════════════════════════════════════════════════════════ */
 export default function PropertyDetail() {
   const { id } = useParams();
   const { isFavourite, toggleFavourite } = useFavourites();
@@ -149,9 +217,9 @@ export default function PropertyDetail() {
   const [listing, setListing] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [activeImg, setActiveImg] = useState(0);
+  const [lightboxOpen, setLightboxOpen] = useState(false);
+  const [lightboxIndex, setLightboxIndex] = useState(0);
   const [showModal, setShowModal] = useState(false);
-  const [showLightbox, setShowLightbox] = useState(false);
 
   useEffect(() => {
     fetchDetail();
@@ -180,37 +248,30 @@ export default function PropertyDetail() {
     ? listing.images
     : ['https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=1200'];
 
-  const handleNextImage = (e) => {
-    if (e) e.stopPropagation();
-    setActiveImg((prev) => (prev + 1) % images.length);
+  const openLightbox = (index) => {
+    setLightboxIndex(index);
+    setLightboxOpen(true);
   };
 
-  const handlePrevImage = (e) => {
-    if (e) e.stopPropagation();
-    setActiveImg((prev) => (prev - 1 + images.length) % images.length);
-  };
-
-  // Keyboard navigation
-  useEffect(() => {
-    const handleKeyDown = (e) => {
-      if (e.key === 'ArrowRight') handleNextImage();
-      if (e.key === 'ArrowLeft') handlePrevImage();
-      if (e.key === 'Escape') setShowLightbox(false);
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [images.length]);
-
+  /* Loading state */
   if (loading) {
     return (
-      <div className="detail-page page-enter">
-        <div className="detail-wrap">
+      <div className="dtl-page page-enter">
+        <div className="dtl-wrap">
           <GallerySkeleton />
-          <div className="detail-layout">
-            <div className="detail-info">
-              <div className="skeleton skeleton-line" style={{ width: '70%', height: 32, marginBottom: 12 }} />
-              <div className="skeleton skeleton-line" style={{ width: '40%', height: 18, marginBottom: 16 }} />
-              <div className="skeleton skeleton-line" style={{ width: '30%', height: 28, marginBottom: 24 }} />
+          <div className="dtl-layout">
+            <div className="dtl-left">
+              <div className="dtl-card">
+                <div className="skeleton skeleton-line" style={{ width: '70%', height: 32, marginBottom: 12 }} />
+                <div className="skeleton skeleton-line" style={{ width: '40%', height: 18, marginBottom: 16 }} />
+                <div className="skeleton skeleton-line" style={{ width: '30%', height: 28, marginBottom: 24 }} />
+                <div className="skeleton skeleton-line" style={{ width: '100%', height: 14, marginBottom: 8 }} />
+                <div className="skeleton skeleton-line" style={{ width: '100%', height: 14, marginBottom: 8 }} />
+                <div className="skeleton skeleton-line" style={{ width: '80%', height: 14 }} />
+              </div>
+            </div>
+            <div>
+              <div className="skeleton" style={{ height: 300, borderRadius: 'var(--radius-lg)' }} />
             </div>
           </div>
         </div>
@@ -218,11 +279,12 @@ export default function PropertyDetail() {
     );
   }
 
+  /* Error state */
   if (error || !listing) {
     return (
-      <div className="detail-page page-enter">
-        <div className="detail-wrap" style={{ textAlign: 'center', padding: '60px 0' }}>
-          <AlertCircle size={48} style={{ color: 'var(--color-error)', marginBottom: 16 }} />
+      <div className="dtl-page page-enter">
+        <div className="dtl-wrap" style={{ textAlign: 'center', padding: '80px 0' }}>
+          <AlertCircle size={52} style={{ color: 'var(--color-error)', marginBottom: 16 }} />
           <h2>{error || 'Property Not Found'}</h2>
           <p style={{ color: 'var(--color-text-secondary)', marginBottom: 24 }}>
             The property you are looking for may have been removed or is unavailable.
@@ -240,231 +302,216 @@ export default function PropertyDetail() {
     ? listing.agent.name.split(' ').map((w) => w[0]).join('').slice(0, 2).toUpperCase()
     : 'AG';
 
+  const createdDate = listing.createdAt
+    ? new Date(listing.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })
+    : null;
+
   return (
-    <div className="detail-page page-enter">
-      <div className="detail-wrap">
-        {/* ── Breadcrumbs ── */}
-        <nav className="breadcrumb" aria-label="Breadcrumb">
-          <Link to="/"><HomeIcon size={14} /> Home</Link>
-          <ChevronRight size={14} className="breadcrumb-sep" />
+    <div className="dtl-page page-enter">
+      {/* ═══════════════════════════════════════════ */}
+      {/* BREADCRUMB                                   */}
+      {/* ═══════════════════════════════════════════ */}
+      <nav className="dtl-breadcrumb" aria-label="Breadcrumb">
+        <div className="dtl-breadcrumb-inner">
+          <Link to="/"><HomeIcon size={13} /> Home</Link>
+          <ChevronRight size={13} className="dtl-bread-sep" />
           <Link to="/listings">Listings</Link>
-          <ChevronRight size={14} className="breadcrumb-sep" />
-          <span className="breadcrumb-current">{listing.title}</span>
-        </nav>
-
-        {/* ── Interactive Image Carousel & Gallery ── */}
-        <div className="detail-gallery-carousel">
-          {/* Main Stage */}
-          <div className="detail-gallery-stage" onClick={() => setShowLightbox(true)}>
-            <img
-              src={images[activeImg]}
-              alt={`${listing.title} — photo ${activeImg + 1}`}
-              className="detail-gallery-main-img"
-            />
-
-            {/* Photo Counter Badge */}
-            <div className="detail-gallery-badge">
-              <Camera size={13} /> {activeImg + 1} / {images.length}
-            </div>
-
-            {/* Fullscreen Expand Button */}
-            <button
-              className="detail-gallery-expand-btn"
-              onClick={(e) => { e.stopPropagation(); setShowLightbox(true); }}
-              title="View full screen"
-              aria-label="View full screen"
-            >
-              <Maximize2 size={15} />
-            </button>
-
-            {/* Left/Right Carousel Arrows */}
-            {images.length > 1 && (
-              <>
-                <button
-                  className="detail-gallery-arrow gallery-arrow-prev"
-                  onClick={handlePrevImage}
-                  aria-label="Previous photo"
-                >
-                  <ChevronLeft size={22} />
-                </button>
-                <button
-                  className="detail-gallery-arrow gallery-arrow-next"
-                  onClick={handleNextImage}
-                  aria-label="Next photo"
-                >
-                  <ChevronRight size={22} />
-                </button>
-              </>
-            )}
-          </div>
-
-          {/* Horizontal Thumbnails Strip */}
-          {images.length > 1 && (
-            <div className="detail-gallery-thumbs">
-              {images.map((img, i) => (
-                <button
-                  key={i}
-                  className={`detail-thumb-btn${i === activeImg ? ' active' : ''}`}
-                  onClick={() => setActiveImg(i)}
-                  title={`View photo ${i + 1}`}
-                >
-                  <img src={img} alt={`Thumbnail ${i + 1}`} />
-                </button>
-              ))}
-            </div>
+          <ChevronRight size={13} className="dtl-bread-sep" />
+          {listing.city && (
+            <>
+              <Link to={`/listings?search=${encodeURIComponent(listing.city)}`}>{listing.city}</Link>
+              <ChevronRight size={13} className="dtl-bread-sep" />
+            </>
           )}
+          <span className="dtl-bread-current">{listing.title}</span>
+        </div>
+      </nav>
+
+      {/* ═══════════════════════════════════════════ */}
+      {/* IMAGE GALLERY (Mosaic Grid)                  */}
+      {/* ═══════════════════════════════════════════ */}
+      <section className="dtl-gallery-section">
+        <div className={`dtl-gallery-grid count-${Math.min(images.length, 5)}`}>
+          {images.slice(0, 5).map((img, i) => (
+            <div
+              key={i}
+              className={`dtl-gallery-item${i === 0 && images.length > 1 ? ' dtl-gallery-hero' : ''}`}
+              onClick={() => openLightbox(i)}
+            >
+              <img src={img} alt={`${listing.title} — photo ${i + 1}`} loading={i < 2 ? 'eager' : 'lazy'} />
+              {i === 4 && images.length > 5 && (
+                <div className="dtl-gallery-more">
+                  <Camera size={18} />
+                  <span>+ {images.length - 5} Photos</span>
+                </div>
+              )}
+            </div>
+          ))}
         </div>
 
-        {/* ── Content Layout ── */}
-        <div className="detail-layout">
-          {/* Left: Property Info */}
-          <div className="detail-info">
-            <div className="detail-title-row">
-              <h1 className="detail-title">{listing.title}</h1>
+        {/* Thumbnail strip */}
+        {images.length > 1 && (
+          <div className="dtl-thumbs">
+            {images.map((img, i) => (
+              <button
+                key={i}
+                className="dtl-thumb-btn"
+                onClick={() => openLightbox(i)}
+                title={`View photo ${i + 1}`}
+              >
+                <img src={img} alt={`Thumbnail ${i + 1}`} loading="lazy" />
+              </button>
+            ))}
+          </div>
+        )}
+      </section>
+
+      {/* ═══════════════════════════════════════════ */}
+      {/* MAIN LAYOUT: Left Content + Right Sidebar    */}
+      {/* ═══════════════════════════════════════════ */}
+      <div className="dtl-layout">
+        <div className="dtl-left">
+
+          {/* ── Header Card ── */}
+          <div className="dtl-card dtl-header-card">
+            <div className="dtl-badges-row">
               <span className={STATUS_CLASS[listing.status] || STATUS_CLASS.available}>
                 {listing.status ? listing.status.charAt(0).toUpperCase() + listing.status.slice(1) : 'Available'}
               </span>
-            </div>
-
-            <p className="detail-location">
-              <MapPin size={15} />
-              {listing.address && `${listing.address}, `}{listing.city}, {listing.region}
-            </p>
-
-            <p className="detail-price">{formatMoney(listing.price)}</p>
-
-            {/* Spec pills */}
-            <div className="detail-specs">
-              {listing.bedrooms != null && (
-                <span className="spec-pill"><Bed size={15} /> {listing.bedrooms} Bedrooms</span>
-              )}
-              {listing.bathrooms != null && (
-                <span className="spec-pill"><Bath size={15} /> {listing.bathrooms} Bathrooms</span>
-              )}
-              {listing.area != null && (
-                <span className="spec-pill"><Maximize2 size={15} /> {listing.area} m²</span>
-              )}
               {listing.listingType && (
-                <span className="spec-pill badge badge-light" style={{ textTransform: 'capitalize' }}>
-                  For {listing.listingType}
+                <span className={`badge ${listing.listingType === 'rent' ? 'badge-info' : 'badge-accent'}`}>
+                  For {listing.listingType.charAt(0).toUpperCase() + listing.listingType.slice(1)}
+                </span>
+              )}
+              {listing.propertyType && (
+                <span className="badge badge-light">
+                  {listing.propertyType.charAt(0).toUpperCase() + listing.propertyType.slice(1)}
                 </span>
               )}
             </div>
 
-            {/* Description */}
-            {listing.description && (
-              <>
-                <h3 className="detail-desc-title">About this property</h3>
-                <p className="detail-desc">{listing.description}</p>
-              </>
-            )}
+            <h1 className="dtl-title">{listing.title}</h1>
+            <p className="dtl-location">
+              <MapPin size={15} />
+              {listing.address && `${listing.address}, `}{listing.city}, {listing.region}
+            </p>
+
+            <div className="dtl-specs-bar">
+              {listing.bedrooms != null && listing.bedrooms > 0 && (
+                <div className="dtl-spec">
+                  <div className="dtl-spec-val">{listing.bedrooms}</div>
+                  <div className="dtl-spec-lbl">Bedroom{listing.bedrooms > 1 ? 's' : ''}</div>
+                </div>
+              )}
+              {listing.bathrooms != null && listing.bathrooms > 0 && (
+                <div className="dtl-spec">
+                  <div className="dtl-spec-val">{listing.bathrooms}</div>
+                  <div className="dtl-spec-lbl">Bathroom{listing.bathrooms > 1 ? 's' : ''}</div>
+                </div>
+              )}
+              {listing.area != null && (
+                <div className="dtl-spec">
+                  <div className="dtl-spec-val">{listing.area.toLocaleString()}</div>
+                  <div className="dtl-spec-lbl">Sq Meters</div>
+                </div>
+              )}
+              {listing.propertyType && (
+                <div className="dtl-spec">
+                  <div className="dtl-spec-val" style={{ fontSize: 'var(--text-base)' }}>
+                    {listing.propertyType.charAt(0).toUpperCase() + listing.propertyType.slice(1)}
+                  </div>
+                  <div className="dtl-spec-lbl">Property Type</div>
+                </div>
+              )}
+            </div>
+
+            <div className="dtl-price-row">
+              <span className="dtl-price">{formatMoney(listing.price)}</span>
+              {listing.listingType && (
+                <span className="dtl-price-note">
+                  For {listing.listingType.charAt(0).toUpperCase() + listing.listingType.slice(1)}
+                  {createdDate && ` • Listed ${createdDate}`}
+                </span>
+              )}
+            </div>
           </div>
 
-          {/* Right: Agent Sidebar */}
-          <aside className="detail-sidebar">
-            {listing.agent && (
-              <div className="agent-sidebar-card">
-                <p className="agent-sidebar-label">Listed by</p>
+          {/* ── Description ── */}
+          {listing.description && (
+            <div className="dtl-card">
+              <h3 className="dtl-section-title">
+                <span className="dtl-section-icon">📝</span> About This Property
+              </h3>
+              <div className="dtl-desc">
+                {listing.description.split('\n').filter(Boolean).map((para, i) => (
+                  <p key={i}>{para}</p>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
 
-                <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-md)', marginBottom: 'var(--space-md)' }}>
-                  <div className="agent-sidebar-avatar">
-                    {listing.agent.profileImage ? (
-                      <img src={listing.agent.profileImage} alt={listing.agent.name} />
-                    ) : (
-                      agentInitials
-                    )}
-                  </div>
-                  <div>
-                    <p className="agent-sidebar-name">{listing.agent.name}</p>
-                    <span className="badge badge-light" style={{ fontSize: '10px' }}>Verified Agent</span>
-                  </div>
+        {/* ═══════════════════════════════════════════ */}
+        {/* RIGHT SIDEBAR — Sticky                       */}
+        {/* ═══════════════════════════════════════════ */}
+        <aside className="dtl-sidebar">
+          {/* Agent Card */}
+          <div className="dtl-sidebar-card dtl-agent-card">
+            <div className="dtl-agent-header">
+              <div className="dtl-agent-avatar-lg">
+                {listing.agent?.profileImage ? (
+                  <img src={listing.agent.profileImage} alt={listing.agent?.name} />
+                ) : (
+                  agentInitials
+                )}
+              </div>
+              <div>
+                <div className="dtl-agent-name-lg">{listing.agent?.name || 'Property Agent'}</div>
+                <div className="dtl-agent-title-lg">
+                  <Shield size={13} /> Verified Agent
                 </div>
-
-                {listing.agent.phone && (
-                  <a href={`tel:${listing.agent.phone}`} className="agent-sidebar-contact" style={{ textDecoration: 'none', color: 'inherit' }}>
-                    <Phone size={14} /> {listing.agent.phone}
-                  </a>
-                )}
-
-                {listing.agent.email && (
-                  <a href={`mailto:${listing.agent.email}`} className="agent-sidebar-contact" style={{ textDecoration: 'none', color: 'inherit', marginBottom: 'var(--space-md)' }}>
-                    <Mail size={14} /> {listing.agent.email}
-                  </a>
-                )}
-
-                <button className="btn btn-primary" style={{ width: '100%', justifyContent: 'center' }} onClick={() => setShowModal(true)}>
-                  Contact Agent
-                </button>
               </div>
-            )}
+            </div>
 
-            {!listing.agent && (
-              <div className="agent-sidebar-card">
-                <button className="btn btn-primary" style={{ width: '100%', justifyContent: 'center' }} onClick={() => setShowModal(true)}>
-                  I'm Interested
-                </button>
-              </div>
-            )}
-
-            {/* Bookmark button */}
-            <button className={`detail-fav-btn${fav ? ' active' : ''}`} onClick={() => toggleFavourite(listing)}>
-              <Bookmark size={16} fill={fav ? 'currentColor' : 'none'} />
-              {fav ? 'Saved Property' : 'Save Property'}
+            <button className="dtl-cta-btn dtl-cta-primary" onClick={() => setShowModal(true)}>
+              Contact Agent
             </button>
 
-            {/* Back link */}
-            <Link to="/listings" style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: 'var(--text-sm)', color: 'var(--color-text-secondary)', textDecoration: 'none' }}>
-              ← Back to Listings
-            </Link>
-          </aside>
-        </div>
+            <button
+              className={`dtl-cta-btn dtl-cta-save${fav ? ' saved' : ''}`}
+              onClick={() => toggleFavourite(listing)}
+            >
+              <Bookmark size={16} strokeWidth={2.4} fill={fav ? 'currentColor' : 'none'} />
+              {fav ? 'Saved Property' : 'Save Property'}
+            </button>
+          </div>
+
+          {/* Safety Tip */}
+          <div className="dtl-safety-tip">
+            <strong>⚠️ Safety First</strong>
+            <p>Never send money before viewing the property and verifying the title. Our agents will never ask for payment via mobile money before a site visit. Report suspicious behavior immediately.</p>
+          </div>
+
+          {/* Back link */}
+          <Link to="/listings" className="dtl-back-link">
+            <ChevronLeft size={15} /> Back to Listings
+          </Link>
+        </aside>
       </div>
+
+      {/* ═══════════════════════════════════════════ */}
+      {/* LIGHTBOX                                     */}
+      {/* ═══════════════════════════════════════════ */}
+      {lightboxOpen && (
+        <Lightbox
+          images={images}
+          startIndex={lightboxIndex}
+          onClose={() => setLightboxOpen(false)}
+        />
+      )}
 
       {/* Inquiry Modal */}
       {showModal && <InquiryModal listing={listing} onClose={() => setShowModal(false)} />}
-
-      {/* ── Fullscreen Lightbox Modal ── */}
-      {showLightbox && (
-        <div className="modal-overlay" onClick={() => setShowLightbox(false)} style={{ background: 'rgba(0, 0, 0, 0.93)', zIndex: 1000 }}>
-          <div style={{ position: 'relative', width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={(e) => e.stopPropagation()}>
-            <button
-              onClick={() => setShowLightbox(false)}
-              style={{ position: 'absolute', top: 20, right: 20, color: '#ffffff', background: 'rgba(255, 255, 255, 0.15)', border: 'none', borderRadius: '50%', width: 44, height: 44, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-            >
-              <X size={24} />
-            </button>
-
-            <div style={{ position: 'absolute', top: 24, left: 24, color: '#ffffff', fontSize: 'var(--text-sm)', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 6, background: 'rgba(0,0,0,0.5)', padding: '6px 14px', borderRadius: 'var(--radius-pill)' }}>
-              <Camera size={15} /> {activeImg + 1} / {images.length}
-            </div>
-
-            <img
-              src={images[activeImg]}
-              alt={listing.title}
-              style={{ maxWidth: '90vw', maxHeight: '85vh', objectFit: 'contain', borderRadius: 'var(--radius-lg)', boxShadow: '0 20px 40px rgba(0,0,0,0.6)' }}
-            />
-
-            {images.length > 1 && (
-              <>
-                <button
-                  onClick={handlePrevImage}
-                  style={{ position: 'absolute', left: 20, color: '#ffffff', background: 'rgba(255, 255, 255, 0.18)', border: 'none', borderRadius: '50%', width: 52, height: 52, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                  aria-label="Previous photo"
-                >
-                  <ChevronLeft size={30} />
-                </button>
-                <button
-                  onClick={handleNextImage}
-                  style={{ position: 'absolute', right: 20, color: '#ffffff', background: 'rgba(255, 255, 255, 0.18)', border: 'none', borderRadius: '50%', width: 52, height: 52, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                  aria-label="Next photo"
-                >
-                  <ChevronRight size={30} />
-                </button>
-              </>
-            )}
-          </div>
-        </div>
-      )}
     </div>
   );
 }

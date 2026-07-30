@@ -79,7 +79,7 @@ export default function Navbar() {
           aria-label={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
           title={isDark ? 'Light mode' : 'Dark mode'}
         >
-          {isDark ? <Sun size={16} /> : <Moon size={16} />}
+          {isDark ? <Sun size={22} strokeWidth={2.3} /> : <Moon size={22} strokeWidth={2.3} />}
         </button>
 
         {/* ── Agents only: bell icon ── */}
@@ -90,7 +90,7 @@ export default function Navbar() {
             aria-label="Notifications"
             onClick={closeMenu}
           >
-            <Bell size={16} />
+            <Bell size={22} strokeWidth={2.3} />
             {/* Unread dot — show if there are unread notifications */}
             {/* <span className="navbar-bell-dot" aria-hidden="true" /> */}
           </Link>
@@ -135,7 +135,7 @@ export default function Navbar() {
         aria-label={menuOpen ? 'Close menu' : 'Open menu'}
         aria-expanded={menuOpen}
       >
-        {menuOpen ? <X size={20} /> : <Menu size={20} />}
+        {menuOpen ? <X size={24} strokeWidth={2.4} /> : <Menu size={24} strokeWidth={2.4} />}
       </button>
     </nav>
   );
