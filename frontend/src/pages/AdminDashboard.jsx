@@ -281,13 +281,13 @@ export default function AdminDashboard() {
 
       <div className="admin-tab-bar">
         <button className={`admin-tab-item${tab === 'overview' ? ' active' : ''}`} onClick={() => setTab('overview')}>
-          <LayoutGrid size={18} strokeWidth={2.5} color="var(--color-accent-dark, #a17a2c)" /> Overview
+          <LayoutGrid size={18} strokeWidth={2.5} color="var(--color-accent-dark, #8a6a10)" /> Overview
         </button>
         <button className={`admin-tab-item${tab === 'users' ? ' active' : ''}`} onClick={() => setTab('users')}>
-          <Users size={18} strokeWidth={2.5} color="var(--color-accent-dark, #a17a2c)" /> Users ({usersTotal})
+          <Users size={18} strokeWidth={2.5} color="var(--color-accent-dark, #8a6a10)" /> Users ({usersTotal})
         </button>
         <button className={`admin-tab-item${tab === 'listings' ? ' active' : ''}`} onClick={() => setTab('listings')}>
-          <Home size={18} strokeWidth={2.5} color="var(--color-accent-dark, #a17a2c)" /> Listings ({listingsTotal})
+          <Home size={18} strokeWidth={2.5} color="var(--color-accent-dark, #8a6a10)" /> Listings ({listingsTotal})
         </button>
       </div>
 
@@ -302,7 +302,7 @@ export default function AdminDashboard() {
               STAT_CARDS.map(({ label, value, icon: Icon }) => (
                 <div key={label} className="admin-stat-card">
                   <div className="admin-stat-icon">
-                    <Icon size={26} strokeWidth={2.5} color="var(--color-accent-dark, #a17a2c)" />
+                    <Icon size={26} strokeWidth={2.5} color="var(--color-accent-dark, #8a6a10)" />
                   </div>
                   <span className="admin-stat-value">{value ?? 0}</span>
                   <span className="admin-stat-label">{label}</span>
@@ -317,11 +317,11 @@ export default function AdminDashboard() {
             <div className="admin-recent-card">
               <div className="admin-recent-header">
                 <div className="admin-recent-title">
-                  <UserPlus size={20} strokeWidth={2.5} color="var(--color-accent-dark, #a17a2c)" />
+                  <UserPlus size={20} strokeWidth={2.5} color="var(--color-accent-dark, #8a6a10)" />
                   <h3>New Users</h3>
                 </div>
                 <button className="btn btn-ghost btn-sm" onClick={() => setTab('users')}>
-                  View all <ArrowRight size={14} strokeWidth={2.5} color="var(--color-accent-dark, #a17a2c)" />
+                  View all <ArrowRight size={14} strokeWidth={2.5} color="var(--color-accent-dark, #8a6a10)" />
                 </button>
               </div>
 
@@ -366,11 +366,11 @@ export default function AdminDashboard() {
             <div className="admin-recent-card">
               <div className="admin-recent-header">
                 <div className="admin-recent-title">
-                  <Building2 size={20} strokeWidth={2.5} color="var(--color-accent-dark, #a17a2c)" />
+                  <Building2 size={20} strokeWidth={2.5} color="var(--color-accent-dark, #8a6a10)" />
                   <h3>Recent Listings</h3>
                 </div>
                 <button className="btn btn-ghost btn-sm" onClick={() => setTab('listings')}>
-                  View all <ArrowRight size={14} strokeWidth={2.5} color="var(--color-accent-dark, #a17a2c)" />
+                  View all <ArrowRight size={14} strokeWidth={2.5} color="var(--color-accent-dark, #8a6a10)" />
                 </button>
               </div>
 
@@ -489,18 +489,18 @@ export default function AdminDashboard() {
                               onClick={() => handleApproveAgent(u._id)}
                               title="Approve Agent"
                             >
-                              <ShieldCheck size={16} strokeWidth={2.5} color="var(--color-accent-dark, #a17a2c)" /> Approve
+                              <ShieldCheck size={16} strokeWidth={2.5} color="var(--color-accent-dark, #8a6a10)" /> Approve
                             </button>
                           )}
                           {u.role === 'agent' && u.agentStatus === 'approved' && (
                             <button
                               className="btn btn-outline btn-sm"
-                              style={{ color: '#b91c1c' }}
+                              style={{ color: 'var(--color-error)' }}
                               disabled={rowActionId === u._id}
                               onClick={() => handleRejectAgent(u._id)}
                               title="Block Agent"
                             >
-                              <ShieldAlert size={16} strokeWidth={2.5} color="#b91c1c" /> Block
+                              <ShieldAlert size={16} strokeWidth={2.5} color="var(--color-error)" /> Block
                             </button>
                           )}
                           <button
@@ -604,7 +604,7 @@ export default function AdminDashboard() {
                       <td>
                         <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end', alignItems: 'center' }}>
                           <Link to={`/listings/${prop._id}`} className="btn btn-outline btn-sm" aria-label="View listing" title="View Property Details">
-                            <ExternalLink size={16} strokeWidth={2.5} color="var(--color-accent-dark, #a17a2c)" />
+                            <ExternalLink size={16} strokeWidth={2.5} color="var(--color-accent-dark, #8a6a10)" />
                           </Link>
                           <button
                             className="btn btn-danger btn-sm"

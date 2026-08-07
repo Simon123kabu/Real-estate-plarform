@@ -368,7 +368,7 @@ export default function Profile() {
     return (
       <div className="page-enter" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '60vh' }}>
         <div className="empty-state">
-          <ShieldCheck size={40} strokeWidth={2.5} color="var(--color-accent-dark, #a17a2c)" />
+          <ShieldCheck size={40} strokeWidth={2.5} color="var(--color-accent-dark, #8a6a10)" />
           <h3>Access Restricted</h3>
           <p>Please sign in to view your profile.</p>
           <Link to="/login" className="btn btn-primary">Sign In</Link>
@@ -400,11 +400,12 @@ export default function Profile() {
 
         <div className="profile-avatar-col">
           <div className="profile-avatar-wrap">
-            {user.profileImage ? (
-              <img src={user.profileImage} alt={user.name} className="profile-avatar-img" />
+            {user?.profileImage && typeof user.profileImage === 'string' && user.profileImage.trim() ? (
+              <img src={user.profileImage.trim()} alt={user.name || 'User'} className="profile-avatar-img" />
             ) : (
               <div className="profile-avatar-fallback">{initials}</div>
             )}
+
             {avatarUploading && (
               <div className="profile-avatar-loading">
                 <Loader2 size={22} strokeWidth={2.5} className="spin" />
@@ -442,7 +443,7 @@ export default function Profile() {
             )}
 
             <button className="btn btn-outline btn-sm profile-edit-btn" onClick={handleOpenEditProfile}>
-              <Settings size={16} strokeWidth={2.5} color="var(--color-accent-dark, #a17a2c)" /> Edit Profile
+              <Settings size={16} strokeWidth={2.5} color="var(--color-accent-dark, #8a6a10)" /> Edit Profile
             </button>
           </div>
 
@@ -466,9 +467,9 @@ export default function Profile() {
           </div>
 
           <div className="profile-meta-row">
-            <span><MapPin size={15} strokeWidth={2.5} color="var(--color-accent-dark, #a17a2c)" /> Accra, Ghana</span>
-            {user.phone && <span><Phone size={15} strokeWidth={2.5} color="var(--color-accent-dark, #a17a2c)" /> {user.phone}</span>}
-            <span><Calendar size={15} strokeWidth={2.5} color="var(--color-accent-dark, #a17a2c)" /> Joined {memberDate}</span>
+            <span><MapPin size={15} strokeWidth={2.5} color="var(--color-accent-dark, #8a6a10)" /> Accra, Ghana</span>
+            {user.phone && <span><Phone size={15} strokeWidth={2.5} color="var(--color-accent-dark, #8a6a10)" /> {user.phone}</span>}
+            <span><Calendar size={15} strokeWidth={2.5} color="var(--color-accent-dark, #8a6a10)" /> Joined {memberDate}</span>
           </div>
 
           {user.role === 'agent' && quota && (
@@ -495,7 +496,7 @@ export default function Profile() {
             className={`profile-tab-item${activeTab === 'listings' ? ' active' : ''}`}
             onClick={() => setActiveTab('listings')}
           >
-            <LayoutGrid size={18} strokeWidth={2.5} color="var(--color-accent-dark, #a17a2c)" /> My Listings
+            <LayoutGrid size={18} strokeWidth={2.5} color="var(--color-accent-dark, #8a6a10)" /> My Listings
           </button>
         )}
 
@@ -503,7 +504,7 @@ export default function Profile() {
           className={`profile-tab-item${activeTab === 'saved' ? ' active' : ''}`}
           onClick={() => setActiveTab('saved')}
         >
-          <Bookmark size={18} strokeWidth={2.5} color="var(--color-accent-dark, #a17a2c)" /> Saved Properties
+          <Bookmark size={18} strokeWidth={2.5} color="var(--color-accent-dark, #8a6a10)" /> Saved Properties
         </button>
       </div>
 
@@ -539,7 +540,7 @@ export default function Profile() {
               </div>
             ) : myListings.length === 0 ? (
               <div className="empty-state">
-                <Home size={40} strokeWidth={2.5} color="var(--color-accent-dark, #a17a2c)" />
+                <Home size={40} strokeWidth={2.5} color="var(--color-accent-dark, #8a6a10)" />
                 <h3>No listings yet</h3>
                 <p>Add your first property so buyers can start finding you.</p>
                 <button className="btn btn-primary" onClick={handleOpenCreateProperty}>
@@ -551,7 +552,7 @@ export default function Profile() {
                 {myListings.map((prop) => (
                   <div key={prop._id} className="my-prop-grid-card">
                     <div className="my-prop-img-zone">
-                      <img src={prop.images?.[0] || 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=500'} alt={prop.title} className="my-prop-img" />
+                      <img src={(prop.images && prop.images.find(img => img && typeof img === 'string' && img.trim())) || 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=500'} alt={prop.title} className="my-prop-img" />
                       <span className={`badge badge-${prop.status === 'available' ? 'success' : 'warning'}`} style={{ position: 'absolute', top: 10, left: 10 }}>
                         {prop.status}
                       </span>
@@ -562,7 +563,7 @@ export default function Profile() {
                           aria-label="View property details"
                           title="View Details"
                         >
-                          <Eye size={18} strokeWidth={2.5} color="var(--color-accent-dark, #a17a2c)" />
+                          <Eye size={18} strokeWidth={2.5} color="var(--color-accent-dark, #8a6a10)" />
                         </Link>
                       </div>
                     </div>
@@ -587,7 +588,7 @@ export default function Profile() {
 
                         <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
                           <button className="btn btn-ghost btn-sm" onClick={() => handleOpenEditProperty(prop)} aria-label="Edit property" title="Edit property">
-                            <Edit2 size={16} strokeWidth={2.5} color="var(--color-accent-dark, #a17a2c)" />
+                            <Edit2 size={16} strokeWidth={2.5} color="var(--color-accent-dark, #8a6a10)" />
                           </button>
                           <button className="btn btn-danger btn-sm" onClick={() => setDeletingPropertyId(prop._id)} aria-label="Delete property" title="Delete property">
                             <Trash2 size={16} strokeWidth={2.5} />
@@ -610,7 +611,7 @@ export default function Profile() {
 
             {favourites.length === 0 ? (
               <div className="empty-state">
-                <Bookmark size={40} strokeWidth={2.5} color="var(--color-accent-dark, #a17a2c)" />
+                <Bookmark size={40} strokeWidth={2.5} color="var(--color-accent-dark, #8a6a10)" />
                 <h3>Nothing saved yet</h3>
                 <p>Tap the bookmark icon on any listing to keep track of it here.</p>
                 <Link to="/listings" className="btn btn-primary">Browse Listings</Link>
@@ -620,7 +621,7 @@ export default function Profile() {
                 {favourites.map((fav) => (
                   <div key={fav._id} className="my-prop-grid-card">
                     <div className="my-prop-img-zone">
-                      <img src={fav.images?.[0] || 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=500'} alt={fav.title} className="my-prop-img" />
+                      <img src={(fav.images && fav.images.find(img => img && typeof img === 'string' && img.trim())) || 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=500'} alt={fav.title} className="my-prop-img" />
                       <div style={{ position: 'absolute', top: 10, right: 10, display: 'flex', gap: 6 }}>
                         <Link
                           to={`/listings/${fav._id}`}
@@ -628,7 +629,7 @@ export default function Profile() {
                           aria-label="View property details"
                           title="View Details"
                         >
-                          <Eye size={18} strokeWidth={2.5} color="var(--color-accent-dark, #a17a2c)" />
+                          <Eye size={18} strokeWidth={2.5} color="var(--color-accent-dark, #8a6a10)" />
                         </Link>
                         <button
                           type="button"
@@ -637,7 +638,7 @@ export default function Profile() {
                           aria-label="Remove from saved"
                           title="Remove from Saved"
                         >
-                          <Trash2 size={18} strokeWidth={2.5} color="#b91c1c" />
+                          <Trash2 size={18} strokeWidth={2.5} color="var(--color-error)" />
                         </button>
                       </div>
                     </div>
@@ -649,11 +650,11 @@ export default function Profile() {
 
                       <div className="my-prop-footer">
                         <span style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary, #475569)', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                          <MapPin size={15} strokeWidth={2.5} color="var(--color-accent-dark, #a17a2c)" />
+                          <MapPin size={15} strokeWidth={2.5} color="var(--color-accent-dark, #8a6a10)" />
                           {fav.city}{fav.region ? `, ${fav.region}` : ''}
                         </span>
                         <Link to={`/listings/${fav._id}`} className="btn btn-outline btn-sm" style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                          View Details <ArrowRight size={15} strokeWidth={2.5} color="var(--color-accent-dark, #a17a2c)" />
+                          View Details <ArrowRight size={15} strokeWidth={2.5} color="var(--color-accent-dark, #8a6a10)" />
                         </Link>
                       </div>
                     </div>
@@ -671,14 +672,15 @@ export default function Profile() {
           <form onSubmit={handleSaveProfile} className="modal-form">
             <div className="avatar-edit-row">
               <div className="profile-avatar-wrap profile-avatar-wrap--sm">
-                {user.profileImage ? (
-                  <img src={user.profileImage} alt={user.name} className="profile-avatar-img" />
+                {user?.profileImage && typeof user.profileImage === 'string' && user.profileImage.trim() ? (
+                  <img src={user.profileImage.trim()} alt={user.name || 'User'} className="profile-avatar-img" />
                 ) : (
                   <div className="profile-avatar-fallback">{initials}</div>
                 )}
+
               </div>
               <button type="button" className="btn btn-outline btn-sm" onClick={() => fileInputRef.current?.click()} disabled={avatarUploading}>
-                {avatarUploading ? <Loader2 size={16} strokeWidth={2.5} className="spin" /> : <Upload size={16} strokeWidth={2.5} color="var(--color-accent-dark, #a17a2c)" />}
+                {avatarUploading ? <Loader2 size={16} strokeWidth={2.5} className="spin" /> : <Upload size={16} strokeWidth={2.5} color="var(--color-accent-dark, #8a6a10)" />}
                 {avatarUploading ? 'Uploading…' : 'Change photo'}
               </button>
             </div>
@@ -770,7 +772,7 @@ export default function Profile() {
 
             <label className="form-label">Photos</label>
             <div className="image-manager-grid">
-              {existingImages.map((img) => (
+              {existingImages.filter(img => img && typeof img === 'string' && img.trim()).map((img) => (
                 <div key={img} className="image-thumb">
                   <img src={img} alt="Property" />
                   <button type="button" className="image-thumb-remove" onClick={() => handleDeleteExistingImage(img)} aria-label="Remove photo">
@@ -778,6 +780,7 @@ export default function Profile() {
                   </button>
                 </div>
               ))}
+
 
               {propertyImageFiles.map((file, i) => (
                 <div key={`${file.name}-${i}`} className="image-thumb image-thumb--pending">
@@ -790,7 +793,7 @@ export default function Profile() {
               ))}
 
               <button type="button" className="image-add-tile" onClick={() => imageUploadRef.current?.click()}>
-                <ImagePlus size={20} strokeWidth={2.5} color="var(--color-accent-dark, #a17a2c)" />
+                <ImagePlus size={20} strokeWidth={2.5} color="var(--color-accent-dark, #8a6a10)" />
                 <span>Add photos</span>
               </button>
               <input type="file" accept="image/*" multiple ref={imageUploadRef} onChange={handlePropertyImageSelect} hidden />

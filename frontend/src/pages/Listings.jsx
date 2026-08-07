@@ -44,17 +44,20 @@ function SkeletonCard() {
   );
 }
 
-/* ── Property Card (enhanced) ── */
+/* ── Property Card  ── */
 function PropCard({ listing }) {
   const { isFavourite, toggleFavourite } = useFavourites();
   const fav = isFavourite(listing._id);
-  const mainImage = listing.images?.length > 0
-    ? listing.images[0]
-    : 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=600';
+  const mainImage = (listing.images && listing.images.find(img => img && typeof img === 'string' && img.trim()))
+    || 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=600';
 
   const agentInitials = listing.agent?.name
     ? listing.agent.name.split(' ').map((w) => w[0]).join('').slice(0, 2).toUpperCase()
     : 'AG';
+
+  const agentAvatar = listing.agent?.profileImage && typeof listing.agent.profileImage === 'string' && listing.agent.profileImage.trim()
+    ? listing.agent.profileImage.trim()
+    : null;
 
   return (
     <div className="lst-card-wrap">
@@ -122,12 +125,13 @@ function PropCard({ listing }) {
           <div className="lst-card-agent">
             <div className="lst-agent-info">
               <div className="lst-agent-avatar">
-                {listing.agent?.profileImage ? (
-                  <img src={listing.agent.profileImage} alt={listing.agent.name} />
+                {agentAvatar ? (
+                  <img src={agentAvatar} alt={listing.agent?.name || 'Agent'} />
                 ) : (
                   agentInitials
                 )}
               </div>
+
               <div>
                 <div className="lst-agent-name">{listing.agent?.name || 'Agent'}</div>
                 <div className="lst-agent-label">Verified Agent</div>

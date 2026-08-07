@@ -244,8 +244,9 @@ export default function PropertyDetail() {
     }
   };
 
-  const images = listing?.images?.length > 0
-    ? listing.images
+  const validImages = (listing?.images || []).filter(img => img && typeof img === 'string' && img.trim() !== '');
+  const images = validImages.length > 0
+    ? validImages
     : ['https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=1200'];
 
   const openLightbox = (index) => {
@@ -459,12 +460,13 @@ export default function PropertyDetail() {
           <div className="dtl-sidebar-card dtl-agent-card">
             <div className="dtl-agent-header">
               <div className="dtl-agent-avatar-lg">
-                {listing.agent?.profileImage ? (
-                  <img src={listing.agent.profileImage} alt={listing.agent?.name} />
+                {listing?.agent?.profileImage && typeof listing.agent.profileImage === 'string' && listing.agent.profileImage.trim() ? (
+                  <img src={listing.agent.profileImage.trim()} alt={listing.agent?.name || 'Agent'} />
                 ) : (
                   agentInitials
                 )}
               </div>
+
               <div>
                 <div className="dtl-agent-name-lg">{listing.agent?.name || 'Property Agent'}</div>
                 <div className="dtl-agent-title-lg">

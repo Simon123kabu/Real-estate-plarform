@@ -4,9 +4,6 @@ const notificationController = require('../controllers/notification.controller')
 
 const router = express.Router();
 
-// Public endpoint: Allow buyers to submit property inquiries
-router.post('/inquiry', notificationController.submitPropertyInquiry);
-
 // Protected endpoints: Manage notification inbox
 router.use(isAuthenticated);
 

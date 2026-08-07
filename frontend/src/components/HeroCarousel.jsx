@@ -78,21 +78,24 @@ export default function HeroCarousel() {
           role="search"
           aria-label="Search for properties"
         >
-          <MapPin size={16} style={{ color: 'var(--color-text-tertiary)', flexShrink: 0 }} />
-          <input
-            className="hero-search-input"
-            type="text"
-            placeholder="Search by city, region, or property type…"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            aria-label="Search properties"
-            id="hero-search-input"
-          />
+          <div className="hero-search-row">
+            <MapPin size={16} style={{ color: 'var(--color-text-tertiary)', flexShrink: 0 }} />
+            <input
+              className="hero-search-input"
+              type="text"
+              placeholder="Search by city, region, or property type…"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              aria-label="Search properties"
+              id="hero-search-input"
+            />
+          </div>
           <button type="submit" className="hero-search-btn" aria-label="Search">
             <Search size={15} />
-            Search
+            <span className="hero-search-btn-label">Search</span>
           </button>
         </form>
+
       </div>
     </section>
   );

@@ -54,9 +54,9 @@ const checkAndExpireSubscriptions = async () => {
 };
 
 const start = () => {
-  cron.schedule('0 1 * * *', () => {
+  cron.schedule('0 1 * * *', async () => {
     console.log('[Job: Subscription Expiry] Running daily checks...');
-    checkAndExpireSubscriptions();
+    await checkAndExpireSubscriptions();
   });
   console.log('[Job: Subscription Expiry] Daily checks registered successfully.');
 };

@@ -25,6 +25,7 @@ const validateObjectId        = require('../middleware/validateObjectId.middlewa
 const { isAgent }             = require('../middleware/auth.middleware');
 const { uploadMultiple }      = require('../middleware/upload.middleware');
 const checkListingQuota       = require('../middleware/checkListingQuota.middleware');
+const { inquiryLimiter }      = require('../middleware/rateLimiter.middleware');
 
 router.get('/', propertyQueryRules, getProperties);
 
@@ -36,7 +37,7 @@ router.get('/:id', validateObjectId('id'), getPropertyById);
 
 // POST /api/properties/:id/inquire — submit inquiry directly for a property
 const notificationController = require('../controllers/notification.controller');
-router.post('/:id/inquire', validateObjectId('id'), notificationController.submitPropertyInquiry);
+router.post('/:id/inquire', inquiryLimiter, validateObjectId('id'), notificationController.submitPropertyInquiry);
 
 // ---- Agent-only routes ----
 

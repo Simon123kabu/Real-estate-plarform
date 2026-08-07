@@ -5,6 +5,7 @@ import { ThemeProvider } from './context/ThemeContext';
 import ProtectedRoute from './routes/ProtectedRoute';
 import Navbar from './components/Navbar';
 import Footer from './components/Footer';
+import ScrollManager from './components/ScrollManager';
 
 import Home from './pages/Home';
 import Login from './pages/Login';
@@ -24,6 +25,7 @@ function App() {
   return (
     <ThemeProvider>
       <BrowserRouter>
+        <ScrollManager />
         <AuthProvider>
           <FavouritesProvider>
           <Navbar />

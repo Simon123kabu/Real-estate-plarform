@@ -89,7 +89,7 @@ export default function Footer() {
             {quickLinks.map(({ label, to }) => (
               <li key={label}>
                 <Link to={to}>
-                  <ArrowRight size={12} />
+                  <ArrowRight size={15} />
                   {label}
                 </Link>
               </li>

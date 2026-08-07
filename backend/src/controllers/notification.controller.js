@@ -15,11 +15,12 @@ exports.getNotifications = asyncHandler(async (req, res) => {
   });
 });
 
-// Mark notification as read
+// Mark notification as read — ownership enforced
 exports.markAsRead = asyncHandler(async (req, res) => {
   const { notificationId } = req.params;
+  const userId = req.session.userId;
 
-  const notification = await notificationService.markAsRead(notificationId);
+  const notification = await notificationService.markAsRead(notificationId, userId);
 
   if (!notification) {
     return res.status(404).json({
@@ -46,11 +47,19 @@ exports.markAllAsRead = asyncHandler(async (req, res) => {
   });
 });
 
-// Delete notification
+// Delete notification — ownership enforced
 exports.deleteNotification = asyncHandler(async (req, res) => {
   const { notificationId } = req.params;
+  const userId = req.session.userId;
 
-  await notificationService.deleteNotification(notificationId);
+  const deleted = await notificationService.deleteNotification(notificationId, userId);
+
+  if (!deleted) {
+    return res.status(404).json({
+      success: false,
+      message: 'Notification not found or access denied'
+    });
+  }
 
   res.status(200).json({
     success: true,
@@ -61,7 +70,12 @@ exports.deleteNotification = asyncHandler(async (req, res) => {
 // Submit property inquiry
 exports.submitPropertyInquiry = asyncHandler(async (req, res) => {
   const targetPropertyId = req.body.propertyId || req.params.id || req.params.propertyId;
-  const { NAME, PHONE, INTERESTED_IN_THE_PROPERTY } = req.body;
+
+  // Accept both camelCase and legacy SCREAMING_CASE field names
+  const name  = req.body.name  || req.body.NAME;
+  const phone = req.body.phone || req.body.PHONE;
+  const message = req.body.message || req.body.interestedIn || req.body.INTERESTED_IN_THE_PROPERTY;
+
   const senderId = req.session ? req.session.userId : null;
 
   // Validate required fields
@@ -72,10 +86,10 @@ exports.submitPropertyInquiry = asyncHandler(async (req, res) => {
     });
   }
 
-  if (!NAME || !PHONE || !INTERESTED_IN_THE_PROPERTY) {
+  if (!name || !phone || !message) {
     return res.status(400).json({
       success: false,
-      message: 'NAME, PHONE, and INTERESTED_IN_THE_PROPERTY are required.'
+      message: 'name, phone, and message are required.'
     });
   }
 
@@ -90,12 +104,12 @@ exports.submitPropertyInquiry = asyncHandler(async (req, res) => {
   }
 
   const notification = await notificationService.createNotification({
-    userId: property.agent,   
+    userId: property.agent,
     type: 'PROPERTY_INQUIRY',
     title: `New inquiry for ${property.title}`,
-    NAME,
-    PHONE,
-    INTERESTED_IN_THE_PROPERTY,
+    NAME: name,
+    PHONE: phone,
+    INTERESTED_IN_THE_PROPERTY: message,
     propertyId: targetPropertyId,
     senderId
   });
@@ -107,9 +121,9 @@ exports.submitPropertyInquiry = asyncHandler(async (req, res) => {
     message: 'Inquiry submitted successfully',
     data: {
       _id: notification._id,
-      NAME: notification.NAME,
-      PHONE: notification.PHONE,
-      INTERESTED_IN_THE_PROPERTY: notification.INTERESTED_IN_THE_PROPERTY,
+      name: notification.NAME,
+      phone: notification.PHONE,
+      message: notification.INTERESTED_IN_THE_PROPERTY,
       createdAt: notification.createdAt
     }
   });

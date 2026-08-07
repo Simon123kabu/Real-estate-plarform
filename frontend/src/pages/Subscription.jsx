@@ -64,7 +64,7 @@ export default function Subscription() {
 
   const handleUpgrade = async (planSlug) => {
     if (!isAuthenticated || role !== 'agent') {
-      alert('Please log in as an agent to subscribe to a plan.');
+      setCheckoutError('Please log in as an agent to subscribe to a plan.');
       return;
     }
 
@@ -108,8 +108,8 @@ export default function Subscription() {
           alignItems: 'center',
           justifyContent: 'center',
           textAlign: 'center',
-          padding: '3.5rem 1.5rem 3rem',
-          background: 'linear-gradient(135deg, #1e362d 0%, #2b4c3f 55%, #152720 100%)',
+          padding: 'var(--space-3xl) var(--space-lg) var(--space-2xl)',
+          background: 'linear-gradient(135deg, var(--color-primary-hover) 0%, var(--color-primary) 55%, var(--color-primary-dark) 100%)',
           color: '#ffffff',
           width: '100%',
           boxSizing: 'border-box'

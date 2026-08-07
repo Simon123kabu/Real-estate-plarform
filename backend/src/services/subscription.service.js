@@ -41,7 +41,7 @@ function getPlanLimits(planSlug) {
     case SUBSCRIPTION_PLANS.PREMIUM:
       return { maxActiveListings: 5, listingDurationDays: 365 };
     case SUBSCRIPTION_PLANS.PREMIUM_PLUS:
-      return { maxActiveListings: 10, listingDurationDays: 365 };
+      return { maxActiveListings: 20, listingDurationDays: 365 };
     case SUBSCRIPTION_PLANS.FREE:
     default:
       return { maxActiveListings: 1, listingDurationDays: 90 };

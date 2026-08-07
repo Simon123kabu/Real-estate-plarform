@@ -106,11 +106,12 @@ export default function Navbar() {
               onClick={closeMenu}
               title={user?.name || 'Profile'}
             >
-              {user?.profileImage ? (
-                <img src={user.profileImage} alt={user.name} />
+              {user?.profileImage && typeof user.profileImage === 'string' && user.profileImage.trim() ? (
+                <img src={user.profileImage.trim()} alt={user.name || 'User'} />
               ) : (
                 initials
               )}
+
             </Link>
 
             <button
@@ -118,7 +119,7 @@ export default function Navbar() {
               onClick={handleLogout}
               aria-label="Log out"
             >
-              Logout
+              LOGOUT
             </button>
           </>
         ) : (

@@ -98,20 +98,3 @@ module.exports = {
   resetPasswordRules,
   handleValidationErrors,
 };
-
-
-
-//{
-  //"email": "alex@example.com", philip@gmail.com(philip123)
-  //"password": "password123"
-//}
-//{
-  //"email": "bob@example.com",
-  //"password": "password123"    admin@example.com  adminPassword123
-//} 
-/*
-//fish@example.com / fish1234
-The profile query inside getMe uses .lean(), which fetches raw
- JSON documents directly from the database and skips instantiating 
- Mongoose documents (bypassing model schema defaults). 
-} */

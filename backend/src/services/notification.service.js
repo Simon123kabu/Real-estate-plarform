@@ -48,15 +48,15 @@ class NotificationService {
     }
   }
 
-  // Mark as read
-  async markAsRead(notificationId) {
+  // Mark as read — only updates the notification if it belongs to this user
+  async markAsRead(notificationId, userId) {
     try {
-      const notification = await Notification.findByIdAndUpdate(
-        notificationId,
+      const notification = await Notification.findOneAndUpdate(
+        { _id: notificationId, userId },
         { isRead: true },
         { new: true }
       );
-      return notification;
+      return notification; // null if not found or not owned by this user
     } catch (error) {
       console.error('Error marking notification as read:', error);
       throw error;
@@ -74,11 +74,11 @@ class NotificationService {
     }
   }
 
-  // Delete notification
-  async deleteNotification(notificationId) {
+  // Delete notification — only deletes if it belongs to this user
+  async deleteNotification(notificationId, userId) {
     try {
-      await Notification.findByIdAndDelete(notificationId);
-      return true;
+      const result = await Notification.findOneAndDelete({ _id: notificationId, userId });
+      return result !== null; // false if not found or not owned
     } catch (error) {
       console.error('Error deleting notification:', error);
       throw error;

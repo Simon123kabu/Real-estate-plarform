@@ -55,11 +55,12 @@ const getPropDetails = (n) => {
 
   // Case 1: propertyId is populated object
   if (n.propertyId && typeof n.propertyId === 'object' && n.propertyId._id) {
+    const validImg = n.propertyId.images?.find(img => img && typeof img === 'string' && img.trim());
     return {
       id: String(n.propertyId._id),
       title: n.propertyId.title || n.title || 'Property Listing',
       city: n.propertyId.city || '',
-      image: n.propertyId.images?.[0] || null,
+      image: validImg || null,
     };
   }
 
@@ -75,13 +76,15 @@ const getPropDetails = (n) => {
 
   // Case 3: property fallback object
   if (n.property && typeof n.property === 'object' && n.property._id) {
+    const validImg = n.property.images?.find(img => img && typeof img === 'string' && img.trim());
     return {
       id: String(n.property._id),
       title: n.property.title || n.title || 'Property Listing',
       city: n.property.city || '',
-      image: n.property.images?.[0] || null,
+      image: validImg || null,
     };
   }
+
 
   return null;
 };

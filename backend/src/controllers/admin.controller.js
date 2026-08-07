@@ -353,20 +353,8 @@ const deleteProperty = asyncHandler(async (req, res) => {
   });
 });
 
-module.exports = {
-  getStats,
-  getUsers,
-  getUserById,
-  changeUserRole,
-  deleteUser,
-  getPendingAgents,
-  approveAgent,
-  rejectAgent,
-  getProperties,
-  getPropertyById,
-  updatePropertyStatus,
-  deleteProperty,
-};
+
+
 
 // ---------------------------------------------------------------------------
 // GET /api/admin/subscriptions — list agent subscriptions

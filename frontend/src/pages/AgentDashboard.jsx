@@ -13,6 +13,7 @@ export default function AgentDashboard() {
   const [editingId, setEditingId] = useState(null);
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState('');
+  const [actionError, setActionError] = useState('');
 
   const [title, setTitle] = useState('');
   const [city, setCity] = useState('');
@@ -186,11 +187,12 @@ export default function AgentDashboard() {
         setListings((prev) =>
           prev.map((l) => (l._id === listingId ? { ...l, status: newStatus } : l))
         );
+        setActionError('');
       } else {
-        alert(data.message || 'Could not update status.');
+        setActionError(data.message || 'Could not update status.');
       }
     } catch (err) {
-      alert('Could not reach the server.');
+      setActionError('Could not reach the server.');
     }
   };
 
@@ -206,11 +208,12 @@ export default function AgentDashboard() {
 
       if (res.ok && data.success) {
         fetchMyListings();
+        setActionError('');
       } else {
-        alert(data.message || 'Could not delete listing.');
+        setActionError(data.message || 'Could not delete listing.');
       }
     } catch (err) {
-      alert('Could not reach the server.');
+      setActionError('Could not reach the server.');
     }
   };
 
@@ -386,9 +389,9 @@ export default function AgentDashboard() {
         <div style={styles.grid}>
           {listings.map((listing) => {
             const mainImage =
-              listing.images && listing.images.length > 0
-                ? listing.images[0]
-                : 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=500';
+              (listing.images && listing.images.find(img => img && typeof img === 'string' && img.trim()))
+              || 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=500';
+
 
             return (
               <div key={listing._id} className="card-modern" style={styles.card}>
@@ -455,34 +458,34 @@ const styles = {
   },
   formTitle: { marginBottom: '8px' },
   row: { display: 'flex', gap: '14px' },
-  input: { padding: '14px', borderRadius: '8px', border: '1px solid #ccc', fontFamily: 'var(--font-body)', fontSize: '1rem' },
-  inputHalf: { flex: 1, padding: '14px', borderRadius: '8px', border: '1px solid #ccc', fontFamily: 'var(--font-body)', fontSize: '1rem' },
-  textarea: { padding: '14px', borderRadius: '8px', border: '1px solid #ccc', fontFamily: 'var(--font-body)', fontSize: '1rem', minHeight: '90px', resize: 'vertical' },
-  field: { display: 'flex', flexDirection: 'column', gap: '6px' },
-  label: { fontWeight: 700, fontSize: '0.9rem', color: 'var(--color-secondary)' },
+  input: { padding: '10px var(--space-md)', borderRadius: 'var(--radius-md)', border: '1.5px solid var(--color-border)', fontFamily: 'var(--font-body)', fontSize: 'var(--text-sm)', backgroundColor: 'var(--color-surface)', color: 'var(--color-text-primary)' },
+  inputHalf: { flex: 1, padding: '10px var(--space-md)', borderRadius: 'var(--radius-md)', border: '1.5px solid var(--color-border)', fontFamily: 'var(--font-body)', fontSize: 'var(--text-sm)', backgroundColor: 'var(--color-surface)', color: 'var(--color-text-primary)' },
+  textarea: { padding: '10px var(--space-md)', borderRadius: 'var(--radius-md)', border: '1.5px solid var(--color-border)', fontFamily: 'var(--font-body)', fontSize: 'var(--text-sm)', minHeight: '90px', resize: 'vertical', backgroundColor: 'var(--color-surface)', color: 'var(--color-text-primary)' },
+  field: { display: 'flex', flexDirection: 'column', gap: 'var(--space-xs)' },
+  label: { fontWeight: 600, fontSize: 'var(--text-sm)', color: 'var(--color-text-primary)' },
   fileInput: { fontFamily: 'var(--font-body)' },
-  fileCount: { fontSize: '0.85rem', color: '#666' },
-  errorText: { color: 'var(--color-primary)', fontWeight: 600, fontSize: '0.9rem' },
+  fileCount: { fontSize: 'var(--text-xs)', color: 'var(--color-text-secondary)' },
+  errorText: { color: 'var(--color-error)', fontWeight: 600, fontSize: 'var(--text-xs)' },
   submitButton: {
-    padding: '14px', backgroundColor: 'var(--color-secondary)', color: 'var(--color-cream)',
-    border: 'none', borderRadius: '8px', fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font-body)', fontSize: '1rem',
+    padding: '12px var(--space-lg)', backgroundColor: 'var(--color-primary)', color: '#ffffff',
+    border: 'none', borderRadius: 'var(--radius-md)', fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font-body)', fontSize: 'var(--text-sm)',
   },
-  stateText: { textAlign: 'center', color: '#777', padding: '40px 0' },
-  errorBox: { padding: '20px', backgroundColor: '#fdecea', color: 'var(--color-primary)', borderRadius: '10px', textAlign: 'center', maxWidth: '500px' },
-  retryButton: { marginTop: '10px', padding: '8px 16px', backgroundColor: 'var(--color-primary)', color: 'var(--color-white)', border: 'none', borderRadius: '6px', cursor: 'pointer' },
-  empty: { padding: '60px 20px', textAlign: 'center', backgroundColor: 'var(--color-white)', borderRadius: '12px' },
-  emptyText: { color: '#777', fontSize: '1.05rem' },
-  grid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '28px' },
-  card: { backgroundColor: 'var(--color-white)', overflow: 'hidden' },
+  stateText: { textAlign: 'center', color: 'var(--color-text-secondary)', padding: 'var(--space-xl) 0' },
+  errorBox: { padding: 'var(--space-lg)', backgroundColor: 'var(--color-error-light)', color: 'var(--color-error)', borderRadius: 'var(--radius-md)', textAlign: 'center', maxWidth: '500px' },
+  retryButton: { marginTop: 'var(--space-sm)', padding: '8px var(--space-md)', backgroundColor: 'var(--color-primary)', color: '#ffffff', border: 'none', borderRadius: 'var(--radius-sm)', cursor: 'pointer' },
+  empty: { padding: 'var(--space-3xl) var(--space-lg)', textAlign: 'center', backgroundColor: 'var(--color-surface)', borderRadius: 'var(--radius-lg)' },
+  emptyText: { color: 'var(--color-text-secondary)', fontSize: 'var(--text-base)' },
+  grid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 'var(--space-lg)' },
+  card: { backgroundColor: 'var(--color-surface)', overflow: 'hidden' },
   cardImage: { width: '100%', height: '190px', objectFit: 'cover' },
-  cardBody: { padding: '20px' },
+  cardBody: { padding: 'var(--space-lg)' },
   cardTitle: { marginBottom: '6px' },
-  cardLocation: { fontSize: '0.95rem', color: '#666', marginBottom: '6px', fontWeight: 600 },
-  cardPrice: { fontSize: '1.15rem', fontWeight: 800, color: 'var(--color-primary)', marginBottom: '6px' },
-  cardSpecs: { fontSize: '0.9rem', color: '#555', marginBottom: '14px' },
-  expiredTag: { color: 'var(--color-primary)', fontWeight: 700 },
-  statusSelect: { width: '100%', padding: '8px', borderRadius: '6px', border: '1px solid #ccc', marginBottom: '14px', fontSize: '0.9rem' },
-  cardActions: { display: 'flex', gap: '10px' },
+  cardLocation: { fontSize: 'var(--text-sm)', color: 'var(--color-text-secondary)', marginBottom: '6px', fontWeight: 600 },
+  cardPrice: { fontSize: 'var(--text-xl)', fontWeight: 800, color: 'var(--color-primary)', marginBottom: '6px' },
+  cardSpecs: { fontSize: 'var(--text-xs)', color: 'var(--color-text-secondary)', marginBottom: '14px' },
+  expiredTag: { color: 'var(--color-error)', fontWeight: 700 },
+  statusSelect: { width: '100%', padding: '8px', borderRadius: 'var(--radius-sm)', border: '1.5px solid var(--color-border)', marginBottom: '14px', fontSize: 'var(--text-xs)' },
+  cardActions: { display: 'flex', gap: 'var(--space-sm)' },
   editButton: {
     flex: 1, padding: '10px', backgroundColor: 'transparent', color: 'var(--color-secondary)',
     border: '1px solid var(--color-secondary)', borderRadius: '6px', cursor: 'pointer', fontSize: '0.9rem', fontWeight: 600,

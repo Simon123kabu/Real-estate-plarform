@@ -60,9 +60,9 @@ export default function Favourites() {
           <div className="listings-grid">
             {favourites.map((listing) => {
               const mainImage =
-                listing.images && listing.images.length > 0
-                  ? listing.images[0]
-                  : 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=600';
+                (listing.images && listing.images.find(img => img && typeof img === 'string' && img.trim()))
+                || 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=600';
+
 
               return (
                 <div key={listing._id} style={{ position: 'relative' }}>

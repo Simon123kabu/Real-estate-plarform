@@ -3,12 +3,12 @@ import HeroCarousel from '../components/HeroCarousel';
 import { useEffect, useRef, useState } from 'react';
 
 const CITIES = [
-  { name: 'Accra',      image: 'https://images.unsplash.com/photo-1596422846543-75c6fc197f07?w=1200&auto=format&fit=crop&q=80' },
-  { name: 'Kumasi',     image: 'https://images.unsplash.com/photo-1580674684081-7617fbf3d745?w=1200&auto=format&fit=crop&q=80' },
+  { name: 'Accra', image: 'https://images.unsplash.com/photo-1596422846543-75c6fc197f07?w=1200&auto=format&fit=crop&q=80' },
+  { name: 'Kumasi', image: 'https://images.unsplash.com/photo-1580674684081-7617fbf3d745?w=1200&auto=format&fit=crop&q=80' },
   { name: 'Cape Coast', image: 'https://images.unsplash.com/photo-1590523741831-ab7e8b8f9c7f?w=1200&auto=format&fit=crop&q=80' },
-  { name: 'Takoradi',   image: 'https://images.unsplash.com/photo-1519046904884-53103b34b206?w=1200&auto=format&fit=crop&q=80' },
-  { name: 'Aburi',      image: 'https://images.unsplash.com/photo-1511497584788-876761c119ef?w=1200&auto=format&fit=crop&q=80' },
-  { name: 'Tamale',     image: 'https://images.unsplash.com/photo-1572276596237-5db2c3e16c5d?w=1200&auto=format&fit=crop&q=80' },
+  { name: 'Takoradi', image: 'https://images.unsplash.com/photo-1519046904884-53103b34b206?w=1200&auto=format&fit=crop&q=80' },
+  { name: 'Aburi', image: 'https://images.unsplash.com/photo-1511497584788-876761c119ef?w=1200&auto=format&fit=crop&q=80' },
+  { name: 'Tamale', image: 'https://images.unsplash.com/photo-1572276596237-5db2c3e16c5d?w=1200&auto=format&fit=crop&q=80' },
 ];
 
 const HOW_IT_WORKS = [
@@ -54,12 +54,11 @@ const HOW_IT_WORKS = [
   },
 ];
 
-const STATS = [
-  { value: 1800000, suffix: '+', label: 'Housing Deficit in Ghana', prefix: '' },
-  { value: 5.8, suffix: '%', label: 'Market Growth Rate (2026)', prefix: '' },
-  { value: 10000, suffix: '+', label: 'Verified Listings', prefix: '' },
-  { value: 98, suffix: '%', label: 'Client Satisfaction Rate', prefix: '' },
-];
+
+
+
+
+
 
 const TRUST_SIGNALS = [
   {
@@ -100,96 +99,6 @@ const TRUST_SIGNALS = [
   },
 ];
 
-const TESTIMONIALS = [
-  {
-    name: 'Kwame Asante',
-    role: 'First-Time Buyer, Accra',
-    quote: 'I was scared of being overcharged by agents, but this platform connected me to a verified agent who walked me through every step. I got my East Legon townhouse at a fair price.',
-    avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200&auto=format&fit=crop&q=80',
-  },
-  {
-    name: 'Ama Owusu',
-    role: 'Diaspora Investor, London',
-    quote: 'Buying property from abroad used to feel impossible. The virtual tours and title-check support gave me confidence. I now own a rental unit in Kumasi without ever stepping foot there first.',
-    avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=200&auto=format&fit=crop&q=80',
-  },
-  {
-    name: 'Dr. Emmanuel Boateng',
-    role: 'Family Home Buyer, Takoradi',
-    quote: 'The transparency is what sold me. No hidden fees, no back-and-forth pricing games. The agent was professional and the closing was smooth. Highly recommended.',
-    avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=200&auto=format&fit=crop&q=80',
-  },
-];
-
-const MARKET_INSIGHTS = [
-  {
-    tag: 'Market Report',
-    title: 'Ghana Real Estate Outlook 2026: Steady Growth Ahead',
-    excerpt: 'Prime Accra prices are projected to rise 5–10% over the next 12 months. Mid-market townhouses and gated communities are the strongest performers.',
-    date: 'July 2026',
-    readTime: '5 min read',
-  },
-  {
-    tag: 'Buying Guide',
-    title: 'Avoiding Title Fraud: What Every Ghanaian Buyer Must Know',
-    excerpt: 'Land disputes account for 52–57% of all civil court cases in Ghana. Learn how to verify title at the Lands Commission and protect yourself.',
-    date: 'June 2026',
-    readTime: '7 min read',
-  },
-  {
-    tag: 'Investment',
-    title: "Why Kumasi is Ghana's Next Property Hotspot",
-    excerpt: 'With major road infrastructure and Boankra logistics terminal driving growth, Kumasi is seeing strong cumulative price growth potential.',
-    date: 'May 2026',
-    readTime: '6 min read',
-  },
-];
-
-/* ── Animated Counter Hook ─────────────────────────── */
-function useCountUp(end, duration = 2000) {
-  const [count, setCount] = useState(0);
-  const ref = useRef(null);
-  const hasAnimated = useRef(false);
-
-  useEffect(() => {
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting && !hasAnimated.current) {
-          hasAnimated.current = true;
-          const startTime = performance.now();
-          const animate = (currentTime) => {
-            const elapsed = currentTime - startTime;
-            const progress = Math.min(elapsed / duration, 1);
-            const easeOut = 1 - Math.pow(1 - progress, 3);
-            setCount(easeOut * end);
-            if (progress < 1) requestAnimationFrame(animate);
-          };
-          requestAnimationFrame(animate);
-        }
-      },
-      { threshold: 0.3 }
-    );
-    if (ref.current) observer.observe(ref.current);
-    return () => observer.disconnect();
-  }, [end, duration]);
-
-  return { count, ref };
-}
-
-function StatCard({ value, suffix, label, prefix }) {
-  const isDecimal = value % 1 !== 0;
-  const { count, ref } = useCountUp(value, 2500);
-  const display = isDecimal ? count.toFixed(1) : Math.floor(count).toLocaleString();
-
-  return (
-    <div className="home-stat-card" ref={ref}>
-      <div className="home-stat-value">
-        {prefix}{display}{suffix}
-      </div>
-      <div className="home-stat-label">{label}</div>
-    </div>
-  );
-}
 
 /* ── Main component ─────────────────────────── */
 export default function Home() {
@@ -206,9 +115,9 @@ export default function Home() {
               Tired of Overcharged Fees, Fake Listings & Shady Agents?
             </h2>
             <p className="value-prop-desc">
-              We know how exhausting it is to find a property in Ghana. Agents overcharge, listings disappear, 
-              and titles turn out fake. Our platform cuts through the noise — connecting you directly to 
-              <strong> verified, licensed agents</strong> with clean listings and transparent pricing. 
+              We know how exhausting it is to find a property in Ghana. Agents overcharge, listings disappear,
+              and titles turn out fake. Our platform cuts through the noise — connecting you directly to
+              <strong> verified, licensed agents</strong> with clean listings and transparent pricing.
               No stress. No surprises. Just property.
             </p>
             <div className="value-prop-ctas">
@@ -298,25 +207,7 @@ export default function Home() {
         </div>
       </section>
 
-      {/* ── Ghana Real Estate in 2026 (Stats Counter) ── */}
-      <section className="home-stats-section">
-        <div className="home-stats-container">
-          <div className="home-section-header home-section-header--light">
-            <h2 className="home-section-title" style={{ color: '#ffffff' }}>Ghana Real Estate in 2026</h2>
-            <p className="home-section-subtitle" style={{ color: 'rgba(255, 255, 255, 0.8)' }}>
-              The market is growing, but it rewards informed buyers. Here is what is happening right now.
-            </p>
-          </div>
-          <div className="home-stats-grid">
-            {STATS.map((stat, i) => (
-              <StatCard key={i} {...stat} />
-            ))}
-          </div>
-          <p className="home-stats-source">
-            Sources: Minister of Works & Housing (Jan 2026), Bank of Ghana, Ghana Property Finder Q1 2026.
-          </p>
-        </div>
-      </section>
+
 
       {/* ── Why Buyers Choose Us (Trust Signals) ── */}
       <section className="trust-section">
@@ -324,7 +215,7 @@ export default function Home() {
           <div className="home-section-header">
             <h2 className="home-section-title">Why Buyers Choose Us</h2>
             <p className="home-section-subtitle">
-              We are solving the three biggest problems in Ghanaian real estate: information asymmetry, 
+              We are solving the three biggest problems in Ghanaian real estate: information asymmetry,
               trust failure, and agent overcharging.
             </p>
           </div>
@@ -340,57 +231,6 @@ export default function Home() {
         </div>
       </section>
 
-      {/* ── Testimonials ── */}
-      <section className="testimonials-section">
-        <div className="testimonials-container">
-          <div className="home-section-header">
-            <h2 className="home-section-title">What Our Clients Say</h2>
-            <p className="home-section-subtitle">
-              Ghanaians who found their property without the usual stress, overcharging, or title fears.
-            </p>
-          </div>
-          <div className="testimonials-grid">
-            {TESTIMONIALS.map((t, i) => (
-              <div key={i} className="testimonial-card">
-                <div className="testimonial-stars">★★★★★</div>
-                <p className="testimonial-quote">"{t.quote}"</p>
-                <div className="testimonial-author">
-                  <img src={t.avatar} alt={t.name} className="testimonial-avatar" loading="lazy" />
-                  <div>
-                    <div className="testimonial-name">{t.name}</div>
-                    <div className="testimonial-role">{t.role}</div>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ── Market Insights ── */}
-      <section className="insights-section">
-        <div className="insights-container">
-          <div className="home-section-header">
-            <h2 className="home-section-title">Market Insights</h2>
-            <p className="home-section-subtitle">
-              Data-driven updates on the Ghanaian property market so you buy, sell, and invest with confidence.
-            </p>
-          </div>
-          <div className="insights-grid">
-            {MARKET_INSIGHTS.map((article, i) => (
-              <article key={i} className="insight-card">
-                <span className="insight-tag">{article.tag}</span>
-                <h3 className="insight-title">{article.title}</h3>
-                <p className="insight-excerpt">{article.excerpt}</p>
-                <div className="insight-footer">
-                  <span>{article.date}</span>
-                  <span>{article.readTime}</span>
-                </div>
-              </article>
-            ))}
-          </div>
-        </div>
-      </section>
     </main>
   );
 }

@@ -8,6 +8,7 @@ export function FavouritesProvider({ children }) {
   const { isAuthenticated } = useAuth();
   const [favourites, setFavourites] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [toggleError, setToggleError] = useState('');
 
   useEffect(() => {
     if (isAuthenticated) {
@@ -70,10 +71,11 @@ export function FavouritesProvider({ children }) {
           // Server confirmed removal — ensure it's not in the list
           setFavourites((prev) => prev.filter((item) => item._id !== listing._id));
         }
+        setToggleError('');
       } else {
-        // Not logged in or some other issue — revert
+        // Not logged in or some other issue — revert and surface error via state
         fetchFavourites();
-        if (data.message) alert(data.message);
+        if (data.message) setToggleError(data.message);
       }
     } catch (err) {
       fetchFavourites();
@@ -83,6 +85,7 @@ export function FavouritesProvider({ children }) {
   const value = {
     favourites,
     loading,
+    toggleError,
     isFavourite,
     toggleFavourite,
     refetchFavourites: fetchFavourites,
