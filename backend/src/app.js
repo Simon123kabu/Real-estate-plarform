@@ -18,9 +18,18 @@ app.use(compression());
 
 app.use(helmet());
 
+const clientUrl = (process.env.CLIENT_URL || 'http://localhost:5173').replace(/\/+$/, '');
+
 app.use(cors({
   credentials: true,
-  origin: process.env.CLIENT_URL || 'http://localhost:5173',
+  origin: (origin, callback) => {
+    if (!origin) return callback(null, true);
+    const cleanOrigin = origin.replace(/\/+$/, '');
+    if (cleanOrigin === clientUrl) {
+      return callback(null, true);
+    }
+    return callback(new Error('Not allowed by CORS'));
+  },
 }));
 
 app.use(morgan(process.env.NODE_ENV === 'production' ? 'combined' : 'dev'));

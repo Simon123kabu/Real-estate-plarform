@@ -1,10 +1,14 @@
 let io = null;
 
 const initializeSocket = (httpServer) => {
+  const rawClientUrl = process.env.CLIENT_URL || 'http://localhost:5173';
+  const cleanClientUrl = rawClientUrl.replace(/\/+$/, '');
+
   const socketIo = require('socket.io')(httpServer, {
     cors: {
-      origin: process.env.CLIENT_URL || 'http://localhost:5173',
-      methods: ['GET', 'POST']
+      origin: [cleanClientUrl, `${cleanClientUrl}/`],
+      methods: ['GET', 'POST'],
+      credentials: true
     }
   });
 
