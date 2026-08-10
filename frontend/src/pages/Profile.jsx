@@ -1,9 +1,9 @@
 import { useState, useEffect, useRef } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import {
   Camera, Settings, LayoutGrid, Bookmark, Plus, Edit2, Trash2,
   MapPin, Phone, Calendar, X, AlertCircle, ShieldCheck, Zap, Upload,
-  Loader2, CheckCircle2, ImagePlus, Home, Eye, ArrowRight
+  Loader2, CheckCircle2, ImagePlus, Home, Eye, ArrowRight, LogOut
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useFavourites } from '../context/FavouritesContext';
@@ -16,8 +16,9 @@ const formatMoney = (num) => 'GH₵ ' + Number(num).toLocaleString('en-GH');
 const PROPERTY_TYPES = ['apartment', 'house', 'land', 'office', 'townhouse', 'villa'];
 
 export default function Profile() {
-  const { user, refreshUser } = useAuth();
+  const { user, refreshUser, logout } = useAuth();
   const { favourites, toggleFavourite } = useFavourites();
+  const navigate = useNavigate();
   const fileInputRef = useRef(null);
   const imageUploadRef = useRef(null);
 
@@ -444,6 +445,14 @@ export default function Profile() {
 
             <button className="btn btn-outline btn-sm profile-edit-btn" onClick={handleOpenEditProfile}>
               <Settings size={16} strokeWidth={2.5} color="var(--color-accent-dark, #8a6a10)" /> Edit Profile
+            </button>
+
+            {/* Mobile-only logout button — desktop uses navbar */}
+            <button
+              className="btn btn-outline btn-sm profile-mobile-logout"
+              onClick={async () => { await logout(); navigate('/'); }}
+            >
+              <LogOut size={15} strokeWidth={2.3} /> Logout
             </button>
           </div>
 

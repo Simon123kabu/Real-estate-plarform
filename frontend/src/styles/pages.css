@@ -3378,13 +3378,29 @@ html {
   background-color: #2b4c3f;
   color: #ffffff;
   border-color: rgba(255, 255, 255, 0.3);
-  transform: translateY(-1px);
   box-shadow: 0 4px 12px rgba(26, 46, 38, 0.35);
 }
 
 .profile-edit-btn:active {
-  transform: translateY(0);
   background-color: #162820;
+}
+
+/* Mobile-only logout button — hidden on desktop, shown on mobile */
+.profile-mobile-logout {
+  display: none;
+  color: var(--color-error);
+  border-color: var(--color-error);
+}
+
+.profile-mobile-logout:hover {
+  background-color: var(--color-error-light);
+  color: var(--color-error);
+}
+
+@media (max-width: 768px) {
+  .profile-mobile-logout {
+    display: inline-flex;
+  }
 }
 
 .profile-stats-inline {
