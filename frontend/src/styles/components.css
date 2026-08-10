@@ -90,7 +90,6 @@
 .navbar-theme-btn:hover {
   background: transparent;
   color: var(--color-primary);
-  transform: scale(1.18);
 }
 
 /* Bell icon */
@@ -115,7 +114,6 @@
 .navbar-bell:hover {
   background: transparent;
   color: var(--color-primary);
-  transform: scale(1.18);
 }
 
 .navbar-bell-dot {
@@ -150,7 +148,6 @@
 }
 
 .navbar-avatar:hover {
-  transform: scale(1.08);
   box-shadow: 0 0 0 3px var(--color-accent-light);
 }
 
@@ -195,7 +192,6 @@
 .navbar-cta:hover {
   background: var(--color-accent-dark);
   color: #ffffff;
-  transform: translateY(-1px);
 }
 
 /* Divider dot between link groups */
@@ -225,7 +221,6 @@
 
 .navbar-toggle:hover {
   color: var(--color-primary);
-  transform: scale(1.15);
 }
 
 /* ── Responsive ──────────────────────────────────────────── */
@@ -336,7 +331,6 @@
   background: transparent;
   color: var(--color-accent);
   border-color: transparent;
-  transform: scale(1.25);
 }
 
 .footer-col h4 {
@@ -444,20 +438,18 @@
   height: 100%;
 }
 
-/* Individual slide — CSS crossfade + Ken Burns subtle zoom */
+/* Individual slide — clean crossfade, no Ken Burns zoom */
 .hero-slide {
   position: absolute;
   inset: 0;
   opacity: 0;
-  transform: scale(1);
-  transition: opacity 1.2s ease-in-out, transform 6s cubic-bezier(0.25, 1, 0.5, 1);
+  transition: opacity 1.2s ease-in-out;
   background-size: cover;
   background-position: center;
 }
 
 .hero-slide.active {
   opacity: 1;
-  transform: scale(1.06);
 }
 
 /* Gradient overlay on each slide */
@@ -559,7 +551,6 @@
 
 .hero-search-btn:hover {
   background: var(--color-primary-hover);
-  transform: scale(1.02);
 }
 
 /* Entrance animation */
