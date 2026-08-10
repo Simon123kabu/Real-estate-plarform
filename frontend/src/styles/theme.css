@@ -591,12 +591,20 @@ select {
   inset: 0;
   background: rgba(0, 0, 0, 0.48);
   backdrop-filter: blur(4px);
-  z-index: var(--z-modal);
+  z-index: 500;
   display: flex;
   align-items: center;
   justify-content: center;
   padding: var(--space-md);
   animation: fade-in 0.2s ease;
+  overflow-y: auto;
+}
+
+@media (max-width: 768px) {
+  .modal-overlay {
+    align-items: flex-start;
+    padding: 16px 12px 80px;
+  }
 }
 
 .modal {

@@ -72,7 +72,7 @@ export default function Navbar() {
 
         <span className="navbar-sep" aria-hidden="true" />
 
-        {/* ── Dark mode toggle ── */}
+        {/* ── Dark mode toggle (desktop) ── */}
         <button
           className="navbar-theme-btn"
           onClick={toggleTheme}
@@ -91,8 +91,6 @@ export default function Navbar() {
             onClick={closeMenu}
           >
             <Bell size={22} strokeWidth={2.3} />
-            {/* Unread dot — show if there are unread notifications */}
-            {/* <span className="navbar-bell-dot" aria-hidden="true" /> */}
           </Link>
         )}
 
@@ -111,7 +109,6 @@ export default function Navbar() {
               ) : (
                 initials
               )}
-
             </Link>
 
             <button
@@ -129,14 +126,14 @@ export default function Navbar() {
         )}
       </div>
 
-      {/* ── Mobile hamburger ── */}
+      {/* ── Dark mode toggle (mobile only — always visible outside navbar-links) ── */}
       <button
-        className="navbar-toggle"
-        onClick={() => setMenuOpen((prev) => !prev)}
-        aria-label={menuOpen ? 'Close menu' : 'Open menu'}
-        aria-expanded={menuOpen}
+        className="navbar-theme-btn navbar-theme-mobile"
+        onClick={toggleTheme}
+        aria-label={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
+        title={isDark ? 'Light mode' : 'Dark mode'}
       >
-        {menuOpen ? <X size={24} strokeWidth={2.4} /> : <Menu size={24} strokeWidth={2.4} />}
+        {isDark ? <Sun size={22} strokeWidth={2.3} /> : <Moon size={22} strokeWidth={2.3} />}
       </button>
     </nav>
   );

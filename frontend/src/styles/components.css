@@ -223,6 +223,11 @@
   color: var(--color-primary);
 }
 
+/* Mobile-only theme toggle — hidden on desktop */
+.navbar-theme-mobile {
+  display: none;
+}
+
 /* ── Responsive ──────────────────────────────────────────── */
 @media (max-width: 768px) {
   .navbar {
@@ -249,8 +254,8 @@
     display: none;
   }
 
-  /* Keep theme toggle visible in top bar */
-  .navbar-theme-btn {
+  /* Show the mobile-only theme toggle */
+  .navbar-theme-mobile {
     display: flex;
   }
 
