@@ -6,6 +6,7 @@ import ProtectedRoute from './routes/ProtectedRoute';
 import Navbar from './components/Navbar';
 import Footer from './components/Footer';
 import ScrollManager from './components/ScrollManager';
+import BottomTabBar from './components/BottomTabBar';
 
 import Home from './pages/Home';
 import Login from './pages/Login';
@@ -88,6 +89,7 @@ function App() {
             />
           </Routes>
           <Footer />
+          <BottomTabBar />
           </FavouritesProvider>
         </AuthProvider>
       </BrowserRouter>

@@ -227,48 +227,126 @@
 @media (max-width: 768px) {
   .navbar {
     padding: 0 var(--space-md);
-    flex-wrap: wrap;
-    height: auto;
-    padding-top: 12px;
-    padding-bottom: 12px;
+    height: 56px;
   }
 
+  /* Hide hamburger toggle — replaced by bottom tab bar */
   .navbar-toggle {
-    display: flex;
+    display: none;
   }
 
+  /* Hide full nav links dropdown on mobile */
   .navbar-links {
-    display: none;
-    width: 100%;
-    flex-direction: column;
-    align-items: flex-start;
-    gap: var(--space-xs);
-    padding: var(--space-md) 0 var(--space-sm);
-    border-top: 1px solid var(--color-border-light);
-    margin-top: var(--space-sm);
-    background: var(--color-surface);
+    display: none !important;
   }
 
-  .navbar-links.open {
+  /* On mobile, only show logo + theme toggle in top bar */
+  .navbar-logout,
+  .navbar-sep,
+  .navbar-avatar,
+  .navbar-cta,
+  .navbar-bell {
+    display: none;
+  }
+
+  /* Keep theme toggle visible in top bar */
+  .navbar-theme-btn {
     display: flex;
-    animation: slide-down 0.2s ease;
   }
 
-  .navbar-link {
-    width: 100%;
-    padding: 10px 14px;
-    font-size: var(--text-base);
+  /* Add bottom padding to pages so content isn't hidden behind tab bar */
+  body {
+    padding-bottom: 68px;
+  }
+}
+
+/* ── Bottom Tab Bar ─────────────────────────────────────────── */
+.bottom-tab-bar {
+  display: none; /* hidden on desktop */
+}
+
+@media (max-width: 768px) {
+  .bottom-tab-bar {
+    display: flex;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: var(--z-sticky);
+    background: var(--color-surface);
+    border-top: 1px solid var(--color-border);
+    height: 60px;
+    align-items: stretch;
+    padding: 0 4px;
+    padding-bottom: env(safe-area-inset-bottom, 0px); /* iPhone notch */
+    box-shadow: 0 -1px 0 var(--color-border), 0 -4px 16px rgba(0,0,0,0.06);
   }
 
-  .navbar-sep {
-    display: none;
+  .tab-item {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    text-decoration: none;
+    color: var(--color-text-tertiary);
+    font-size: 10px;
+    font-weight: 500;
+    font-family: var(--font-body);
+    letter-spacing: 0.02em;
+    position: relative;
+    padding: 8px 4px 6px;
+    transition: color var(--transition-fast);
+    border-radius: 0;
+    min-width: 0;
   }
 
-  .navbar-logout {
-    width: 100%;
-    text-align: center;
-    padding: 10px 14px;
+  .tab-item:hover {
+    color: var(--color-primary);
   }
+
+  .tab-item.active {
+    color: var(--color-primary);
+  }
+
+  /* Active top-line indicator */
+  .tab-item.active::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 20%;
+    right: 20%;
+    height: 2px;
+    background: var(--color-primary);
+    border-radius: 0 0 2px 2px;
+  }
+
+  .tab-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    flex-shrink: 0;
+  }
+
+  .tab-label {
+    font-size: 10px;
+    font-weight: 500;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 100%;
+    line-height: 1;
+  }
+}
+
+/* Dark mode tab bar */
+[data-theme="dark"] .bottom-tab-bar {
+  background: var(--color-surface);
+  border-top-color: var(--color-border);
+  box-shadow: 0 -1px 0 var(--color-border), 0 -4px 16px rgba(0,0,0,0.3);
 }
 
 /* ── Footer ──────────────────────────────────────────────── */
